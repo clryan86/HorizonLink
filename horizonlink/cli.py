@@ -17,6 +17,7 @@ from horizonlink.detectors.radiometer import (
     power_snr,
     thermal_noise_power,
 )
+from horizonlink.horizons.design import maximum_receiver_distance, required_transmitter_power
 from horizonlink.horizons.kerr import (
     frame_dragging_angular_velocity,
     gravitational_radius,
@@ -107,6 +108,20 @@ def _parser() -> argparse.ArgumentParser:
     detect.add_argument("integration_time_s", type=_finite_float)
     detect.add_argument("--aperture-area-m2", type=_finite_float, default=1.0)
 
+    design = sub.add_parser(
+        "link-design",
+        help="Solve inverse exterior-link questions for a target integrated SNR",
+    )
+    design.add_argument("mass_solar", type=_finite_float)
+    design.add_argument("emitter_radius_rs", type=_finite_float)
+    design.add_argument("receiver_distance_m", type=_finite_float)
+    design.add_argument("transmitter_power_w", type=_finite_float)
+    design.add_argument("system_temperature_k", type=_finite_float)
+    design.add_argument("bandwidth_hz", type=_finite_float)
+    design.add_argument("integration_time_s", type=_finite_float)
+    design.add_argument("--aperture-area-m2", type=_finite_float, default=1.0)
+    design.add_argument("--target-snr", type=_finite_float, default=5.0)
+
     tp = sub.add_parser("teleport", help="Run the three-qubit teleportation toy model")
     tp.add_argument("theta", type=_finite_float, help="Input-state Bloch polar angle in radians")
     tp.add_argument("--phi", type=_finite_float, default=0.0, help="Bloch azimuth angle in radians")
@@ -137,7 +152,20 @@ def _launch_dashboard(parser: argparse.ArgumentParser) -> int:
     return result.returncode
 
 
-def _calculate(args: argparse.Namespace) -> dict[str, float | int]:
+def _link_geometry(args: argparse.Namespace) -> tuple[float, float, float]:
+    mass_kg = args.mass_solar * M_SUN
+    rs = schwarzschild_radius(mass_kg)
+    emitter_radius = args.emitter_radius_rs * rs
+    link_fraction = horizon_link_fraction(
+        mass_kg,
+        emitter_radius,
+        args.receiver_distance_m,
+        args.aperture_area_m2,
+    )
+    return mass_kg, emitter_radius, link_fraction
+
+
+def _calculate(args: argparse.Namespace) -> dict[str, float | int | None]:
     if args.command == "radius":
         mass_kg = args.mass_solar * M_SUN
         return {
@@ -207,15 +235,7 @@ def _calculate(args: argparse.Namespace) -> dict[str, float | int]:
     if args.command == "link-detect":
         if args.transmitter_power_w < 0.0:
             raise ValueError("transmitter_power_w cannot be negative")
-        mass_kg = args.mass_solar * M_SUN
-        rs = schwarzschild_radius(mass_kg)
-        emitter_radius = args.emitter_radius_rs * rs
-        link_fraction = horizon_link_fraction(
-            mass_kg,
-            emitter_radius,
-            args.receiver_distance_m,
-            args.aperture_area_m2,
-        )
+        mass_kg, emitter_radius, link_fraction = _link_geometry(args)
         received_power = args.transmitter_power_w * link_fraction
         instantaneous_snr = power_snr(
             received_power,
@@ -246,21 +266,60 @@ def _calculate(args: argparse.Namespace) -> dict[str, float | int]:
             ),
         }
 
-    mass_kg = args.mass_solar * M_SUN
-    rs = schwarzschild_radius(mass_kg)
-    emitter_radius = args.emitter_radius_rs * rs
+    if args.command == "link-design":
+        if args.transmitter_power_w <= 0.0:
+            raise ValueError("transmitter_power_w must be positive")
+        mass_kg, emitter_radius, link_fraction = _link_geometry(args)
+        received_power = args.transmitter_power_w * link_fraction
+        current_snr = integrated_radiometer_snr(
+            received_power,
+            args.system_temperature_k,
+            args.bandwidth_hz,
+            args.integration_time_s,
+        )
+        required_power = required_transmitter_power(
+            mass_kg,
+            emitter_radius,
+            args.receiver_distance_m,
+            args.aperture_area_m2,
+            args.system_temperature_k,
+            args.bandwidth_hz,
+            args.integration_time_s,
+            args.target_snr,
+        )
+        try:
+            maximum_distance = maximum_receiver_distance(
+                mass_kg,
+                emitter_radius,
+                args.transmitter_power_w,
+                args.aperture_area_m2,
+                args.system_temperature_k,
+                args.bandwidth_hz,
+                args.integration_time_s,
+                args.target_snr,
+            )
+        except ValueError:
+            maximum_distance = None
+        return {
+            "mass_solar": args.mass_solar,
+            "emitter_radius_rs": args.emitter_radius_rs,
+            "receiver_distance_m": args.receiver_distance_m,
+            "transmitter_power_w": args.transmitter_power_w,
+            "aperture_area_m2": args.aperture_area_m2,
+            "target_integrated_snr": args.target_snr,
+            "current_integrated_snr": current_snr,
+            "required_transmitter_power_w": required_power,
+            "maximum_receiver_distance_m": maximum_distance,
+        }
+
+    mass_kg, emitter_radius, link_fraction = _link_geometry(args)
     return {
         "mass_solar": args.mass_solar,
         "emitter_radius_rs": args.emitter_radius_rs,
         "redshifted_frequency_hz": redshifted_frequency(
             mass_kg, emitter_radius, args.emitted_hz
         ),
-        "received_power_fraction": horizon_link_fraction(
-            mass_kg,
-            emitter_radius,
-            args.receiver_distance_m,
-            args.aperture_area_m2,
-        ),
+        "received_power_fraction": link_fraction,
     }
 
 
