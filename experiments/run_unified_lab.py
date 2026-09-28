@@ -23,12 +23,15 @@ def main():
     p.add_argument('--aperture-area-m2',type=float,default=1.0)
     p.add_argument('--bandwidth-hz',type=float,default=1e6)
     p.add_argument('--system-temperature-k',type=float,default=50.0)
+    p.add_argument('--integration-time-s',type=float,default=1.0)
+    p.add_argument('--target-snr',type=float,default=5.0)
     a=p.parse_args()
     inp=LabInput(
         mass_solar=a.mass_solar, spin_chi=a.spin, charge_ratio_qm=a.charge_ratio, emitter_radius_rs=a.radius_rs,
         receiver_distance_m=a.receiver_distance_m, emitted_hz=a.emitted_hz,
         transmitter_power_w=a.transmitter_power_w, aperture_area_m2=a.aperture_area_m2,
         bandwidth_hz=a.bandwidth_hz, system_temperature_k=a.system_temperature_k,
+        integration_time_s=a.integration_time_s, target_snr=a.target_snr,
     )
     print(json.dumps(run_lab(inp).as_dict(),indent=2,sort_keys=True,allow_nan=False))
 
