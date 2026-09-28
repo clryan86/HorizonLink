@@ -9,7 +9,7 @@ from horizonlink.horizons.kerr import (
     horizon_radii,
     static_limit_radius,
 )
-from horizonlink.horizons.schwarzschild import C, M_SUN, schwarzschild_radius
+from horizonlink.horizons.schwarzschild import M_SUN, C, schwarzschild_radius
 
 
 def test_zero_spin_matches_schwarzschild_outer_horizon():
