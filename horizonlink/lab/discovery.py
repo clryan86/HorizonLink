@@ -50,7 +50,13 @@ def scan_pair(x_name: str, y_name: str, xs: Iterable[float], ys: Iterable[float]
         fit=_linear_fit([math.log(v) for v in x],[math.log(v) for v in y])
         if fit:
             la,p,r2=fit
-            out.append(Candidate(x_name,y_name,'power_law',r2,{'coefficient':math.exp(la),'exponent':p},len(x),'candidate scale-free power law'))
+            # A statistically good log-log fit can have an intercept too large
+            # to represent as a finite coefficient. Skip that parameterization
+            # rather than crashing an entire research sweep.
+            if -745.0 <= la <= 709.0:
+                coefficient=math.exp(la)
+                if math.isfinite(coefficient):
+                    out.append(Candidate(x_name,y_name,'power_law',r2,{'coefficient':coefficient,'exponent':p},len(x),'candidate scale-free power law'))
     if all(v>0 for v in x):
         fit=_linear_fit([math.log(v) for v in x],y)
         if fit:
@@ -73,6 +79,5 @@ def scan_table(rows: list[dict[str,float]], threshold: float=0.999):
     for i,x in enumerate(numeric):
         for y in numeric[i+1:]:
             candidates.extend(c for c in scan_pair(x,y,[r[x] for r in rows],[r[y] for r in rows]) if c.score>=threshold)
-    # Deduplicate near-identical fits by pair/model and rank strongest first.
     candidates.sort(key=lambda c:(c.score,c.points),reverse=True)
     return candidates
