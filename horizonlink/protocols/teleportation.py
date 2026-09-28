@@ -13,7 +13,7 @@ import math
 
 import numpy as np
 
-from horizonlink.quantum.states import H, I2, X, Y, Z, bell_phi_plus, density_matrix
+from horizonlink.quantum.states import I2, H, X, Y, Z, bell_phi_plus, density_matrix
 
 
 def _single_qubit_operator(gate: np.ndarray, target: int) -> np.ndarray:
