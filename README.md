@@ -8,7 +8,7 @@ The project deliberately separates established equations from simplified analogu
 
 ## HorizonLink Lab dashboard
 
-HorizonLink now includes an interactive local browser dashboard. You can change black-hole mass, spin, emitter radius, transmitter power, frequency, receiver distance, collecting area, bandwidth, system temperature, integration time, and quantum-channel errors and watch the calculated outputs update immediately.
+HorizonLink includes an interactive local browser dashboard. You can change black-hole mass, spin, emitter radius, transmitter power, frequency, receiver distance, collecting area, bandwidth, system temperature, integration time, target SNR, and quantum-channel errors and watch the calculated outputs update immediately.
 
 Install the dashboard dependencies:
 
@@ -19,12 +19,12 @@ pip install -e ".[dashboard]"
 Launch it:
 
 ```bash
-python -m streamlit run horizonlink/dashboard.py
+horizonlink dashboard
 ```
 
-Streamlit will open **HorizonLink Lab** in your browser. The first version contains three workspaces:
+Streamlit will open **HorizonLink Lab** in your browser. The current workspaces are:
 
-- **Exterior Link** — redshift, geometric collection, received signal power, thermal noise, SNR, integration gain, and Shannon capacity
+- **Exterior Link** — redshift, geometric collection, received signal power, thermal noise, SNR, integration gain, Shannon capacity, required transmitter power, and maximum receiver distance
 - **Kerr Rotation** — outer/inner horizons, static limit, horizon rotation, and frame-dragging profiles
 - **Quantum Information** — noisy three-qubit teleportation with live fidelity sweeps
 
@@ -43,22 +43,26 @@ The goal is not to force an exotic result. The goal is to find out exactly where
 - Exterior-horizon toy link budget using redshift plus geometric collection
 - Idealized thermal detector model using `kTB` noise and radiometer integration scaling
 - End-to-end link detectability calculation from transmitter power to SNR and Shannon capacity
+- Inverse link design for required transmitter power and maximum receiver distance at a target SNR
 - Binary erasure channel simulation
-- Binary symmetric channel capacity and simulation
+- Binary symmetric channel capacity and simulation over the full `0 <= p <= 1` domain
 - AWGN Shannon-Hartley capacity calculations
 - Information-theory metrics
-- Hayden–Preskill-inspired recovery toy model
+- Explicitly uncalibrated Hayden-Preskill-inspired recovery proxy
 - Three-qubit quantum teleportation simulator implemented directly with NumPy
 - Bell-resource noise and noisy classical correction-bit models
 - Entanglement entropy, purity, partial-trace, and CHSH diagnostics
-- Cartesian parameter search
+- Cartesian parameter search with non-finite objective rejection
 - Reproducible Monte Carlo experiments
-- JSON-producing command-line interface
-- CSV horizon, Kerr, and teleportation experiments
+- Strict JSON-producing command-line interface
+- CSV horizon, Kerr, detectability, and teleportation experiments
+- Experiment provenance metadata with package/Python/NumPy versions and Git commit when available
+- Atomic experiment output writes that protect existing results from failed runs
 - Interactive Streamlit browser dashboard
 - Optional matplotlib plots
 - Pytest test suite
 - Ruff linting and GitHub Actions CI on Python 3.10, 3.11, and 3.12
+- CI wheel/sdist build plus installed-package smoke test
 
 ## Install
 
@@ -124,6 +128,16 @@ horizonlink link-detect 10 2.0 1e9 1e9 100 50 1e6 10 --aperture-area-m2 100
 
 This combines the exterior link fraction with transmitter power, receiver system temperature, bandwidth, and integration time. It reports received power, thermal noise, instantaneous power SNR, idealized integrated radiometer SNR, and Shannon capacity.
 
+### Inverse link design
+
+```bash
+horizonlink link-design 10 2.0 1e9 1e8 50 1e6 10 \
+  --aperture-area-m2 100 \
+  --target-snr 5
+```
+
+This asks two inverse questions under the same simplified model: how much transmitter power is required to reach the target integrated SNR at the requested distance, and how far the supplied transmitter power can reach at that target SNR. It also reports the SNR of the supplied scenario.
+
 ### Binary symmetric channel capacity
 
 ```bash
@@ -163,6 +177,16 @@ python experiments/run_horizon_profile.py \
   --output horizon_profile.csv
 ```
 
+Generate a full detectability sweep with a provenance sidecar:
+
+```bash
+python experiments/run_detectability_sweep.py \
+  --mass-solar 10 \
+  --output results/detectability.csv
+```
+
+The detectability experiment writes the CSV only after the full calculation succeeds and also creates `detectability.csv.metadata.json` with the model classification, complete inputs, HorizonLink/Python/NumPy versions, timestamp, and Git commit when available.
+
 Generate a Kerr frame-dragging profile:
 
 ```bash
@@ -178,7 +202,7 @@ python experiments/run_teleportation_sweep.py
 Generate a two-dimensional teleportation noise surface:
 
 ```bash
-python experiments/run_teleportation_noise_surface.py
+python experiments/run_teleportation_surface.py
 ```
 
 The original channel-search experiment is also available:
@@ -201,6 +225,7 @@ horizonlink/
   simulation/     Reproducible Monte Carlo experiments
   cli.py          Command-line interface
   dashboard.py    Interactive HorizonLink Lab
+  provenance.py   Reproducible output metadata and atomic writes
   visualization.py
 experiments/       Runnable research scripts
 tests/             Automated tests
