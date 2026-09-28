@@ -49,6 +49,16 @@ def test_link_design_command(capsys):
     assert payload["current_integrated_snr"] > 0.0
 
 
+def test_ecc_benchmark_command(capsys):
+    assert main(["ecc-benchmark", "0.05", "--trials", "4", "--bits", "4000", "--seed", "7"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["flip_probability"] == 0.05
+    assert payload["repetition3_code_rate"] == pytest.approx(1.0 / 3.0)
+    assert payload["hamming74_code_rate"] == pytest.approx(4.0 / 7.0)
+    assert payload["repetition3_mean_ber"] < payload["uncoded_mean_ber"]
+    assert payload["hamming74_mean_ber"] < payload["uncoded_mean_ber"]
+
+
 def test_scenario_replay_command(tmp_path, capsys):
     scenario = {
         "schema_version": 1,
