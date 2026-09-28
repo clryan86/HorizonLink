@@ -11,7 +11,6 @@ import math
 
 import numpy as np
 
-
 ZERO = np.array([1.0, 0.0], dtype=complex)
 ONE = np.array([0.0, 1.0], dtype=complex)
 H = np.array([[1.0, 1.0], [1.0, -1.0]], dtype=complex) / math.sqrt(2.0)
