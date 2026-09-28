@@ -115,10 +115,11 @@ def _launch_dashboard(parser: argparse.ArgumentParser) -> int:
     if importlib.util.find_spec("streamlit") is None:
         parser.error('Dashboard dependencies are not installed. Run: pip install -e ".[dashboard]"')
     dashboard_path = Path(__file__).with_name("dashboard.py")
-    return subprocess.call(
+    result = subprocess.run(
         [sys.executable, "-m", "streamlit", "run", str(dashboard_path)],
         check=False,
     )
+    return result.returncode
 
 
 def main(argv: list[str] | None = None) -> int:
