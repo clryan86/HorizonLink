@@ -8,9 +8,11 @@ from horizonlink.channels.binary_symmetric import (
 )
 
 
-def test_capacity_endpoints():
+def test_capacity_endpoints_and_symmetry():
     assert capacity_bits_per_use(0.0) == pytest.approx(1.0)
     assert capacity_bits_per_use(0.5) == pytest.approx(0.0)
+    assert capacity_bits_per_use(1.0) == pytest.approx(1.0)
+    assert capacity_bits_per_use(0.2) == pytest.approx(capacity_bits_per_use(0.8))
 
 
 def test_binary_entropy_is_symmetric():
@@ -26,4 +28,4 @@ def test_transmit_is_reproducible():
 
 def test_invalid_capacity_probability():
     with pytest.raises(ValueError):
-        capacity_bits_per_use(0.6)
+        capacity_bits_per_use(1.1)
