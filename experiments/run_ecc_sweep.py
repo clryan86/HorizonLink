@@ -18,12 +18,15 @@ def run(
     trials: int = 50,
     bits_per_trial: int = 12_000,
     seed: int = 0,
+    confidence: float = 0.95,
     output_path: str = "results/ecc_sweep.csv",
 ) -> Path:
     if points < 2:
         raise ValueError("points must be at least 2")
     if not np.isfinite(max_flip_probability) or not 0.0 < max_flip_probability <= 1.0:
         raise ValueError("max_flip_probability must be finite and in (0, 1]")
+    if not np.isfinite(confidence) or not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be finite and between 0 and 1")
 
     probabilities = np.linspace(0.0, max_flip_probability, points)
     rows = []
@@ -33,6 +36,7 @@ def run(
             trials=trials,
             bits_per_trial=bits_per_trial,
             seed=seed + index,
+            confidence=confidence,
         ).as_dict()
         rows.append(result)
 
@@ -45,6 +49,11 @@ def run(
             "trials_per_point": trials,
             "bits_per_trial": bits_per_trial,
             "seed": seed,
+            "confidence": confidence,
+            "confidence_method": (
+                "normal-approximation interval for the trial-level mean using sample standard "
+                "deviation; intended as a convergence diagnostic"
+            ),
             "schemes": ["uncoded", "repetition-3", "hamming-7-4"],
             "comparison_basis": (
                 "same independent BSC flip probability per transmitted physical bit; "
@@ -89,6 +98,7 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=50)
     parser.add_argument("--bits", type=int, default=12_000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--confidence", type=float, default=0.95)
     parser.add_argument("--output", type=Path, default=Path("results/ecc_sweep.csv"))
     args = parser.parse_args()
 
@@ -98,6 +108,7 @@ def main() -> None:
         trials=args.trials,
         bits_per_trial=args.bits,
         seed=args.seed,
+        confidence=args.confidence,
         output_path=str(args.output),
     )
     maybe_plot(result)
