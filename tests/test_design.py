@@ -96,3 +96,64 @@ def test_max_distance_rejects_impossible_target():
             integration_time_s=1.0,
             target_snr=100.0,
         )
+
+
+def test_inverse_design_rejects_nonfinite_power_and_aperture():
+    mass = M_SUN
+    radius = 2.0 * schwarzschild_radius(mass)
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError):
+            maximum_receiver_distance(
+                mass,
+                radius,
+                transmitter_power_w=bad,
+                aperture_area_m2=1.0,
+                system_temperature_k=50.0,
+                bandwidth_hz=1.0e6,
+                integration_time_s=10.0,
+                target_snr=5.0,
+            )
+        with pytest.raises(ValueError):
+            maximum_receiver_distance(
+                mass,
+                radius,
+                transmitter_power_w=100.0,
+                aperture_area_m2=bad,
+                system_temperature_k=50.0,
+                bandwidth_hz=1.0e6,
+                integration_time_s=10.0,
+                target_snr=5.0,
+            )
+
+
+def test_required_power_and_max_distance_are_mutual_inverses():
+    mass = 3.0 * M_SUN
+    radius = 4.0 * schwarzschild_radius(mass)
+    distance = 3.0e11
+    aperture = 250.0
+    temperature = 35.0
+    bandwidth = 2.0e5
+    integration = 60.0
+    target = 7.5
+
+    power = required_transmitter_power(
+        mass,
+        radius,
+        distance,
+        aperture,
+        temperature,
+        bandwidth,
+        integration,
+        target,
+    )
+    recovered_distance = maximum_receiver_distance(
+        mass,
+        radius,
+        power,
+        aperture,
+        temperature,
+        bandwidth,
+        integration,
+        target,
+    )
+    assert recovered_distance == pytest.approx(distance, rel=1e-12)
