@@ -2,9 +2,33 @@
 
 [![CI](https://github.com/clryan86/HorizonLink/actions/workflows/ci.yml/badge.svg)](https://github.com/clryan86/HorizonLink/actions/workflows/ci.yml)
 
-**HorizonLink** is an open-source Python research sandbox for turning questions about horizons, noisy channels, quantum-information analogues, and information recovery into reproducible numerical experiments.
+**HorizonLink** is an open-source Python laboratory for turning questions about black-hole horizons, communication links, detector sensitivity, noisy channels, and quantum-information analogues into reproducible numerical experiments.
 
 The project deliberately separates established equations from simplified analogues and speculative toy models. It does **not** claim faster-than-light communication, communication from inside a classical black-hole event horizon, or a violation of quantum no-signaling constraints.
+
+## HorizonLink Lab dashboard
+
+HorizonLink now includes an interactive local browser dashboard. You can change black-hole mass, spin, emitter radius, transmitter power, frequency, receiver distance, collecting area, bandwidth, system temperature, integration time, and quantum-channel errors and watch the calculated outputs update immediately.
+
+Install the dashboard dependencies:
+
+```bash
+pip install -e ".[dashboard]"
+```
+
+Launch it:
+
+```bash
+python -m streamlit run horizonlink/dashboard.py
+```
+
+Streamlit will open **HorizonLink Lab** in your browser. The first version contains three workspaces:
+
+- **Exterior Link** — redshift, geometric collection, received signal power, thermal noise, SNR, integration gain, and Shannon capacity
+- **Kerr Rotation** — outer/inner horizons, static limit, horizon rotation, and frame-dragging profiles
+- **Quantum Information** — noisy three-qubit teleportation with live fidelity sweeps
+
+See [`docs/DASHBOARD.md`](docs/DASHBOARD.md) for a guided walkthrough.
 
 ## Why this project exists
 
@@ -15,18 +39,23 @@ The goal is not to force an exotic result. The goal is to find out exactly where
 ## Current capabilities
 
 - Schwarzschild radius, gravitational redshift, and outgoing-light coordinate-delay helpers
+- Kerr outer/inner horizon radii, ergosphere static limit, horizon angular velocity, and ZAMO frame dragging
 - Exterior-horizon toy link budget using redshift plus geometric collection
+- Idealized thermal detector model using `kTB` noise and radiometer integration scaling
+- End-to-end link detectability calculation from transmitter power to SNR and Shannon capacity
 - Binary erasure channel simulation
 - Binary symmetric channel capacity and simulation
 - AWGN Shannon-Hartley capacity calculations
 - Information-theory metrics
 - Hayden–Preskill-inspired recovery toy model
 - Three-qubit quantum teleportation simulator implemented directly with NumPy
-- Noisy Bell-resource / teleportation fidelity experiments
+- Bell-resource noise and noisy classical correction-bit models
+- Entanglement entropy, purity, partial-trace, and CHSH diagnostics
 - Cartesian parameter search
 - Reproducible Monte Carlo experiments
 - JSON-producing command-line interface
-- CSV horizon-profile and teleportation-sweep experiments
+- CSV horizon, Kerr, and teleportation experiments
+- Interactive Streamlit browser dashboard
 - Optional matplotlib plots
 - Pytest test suite
 - Ruff linting and GitHub Actions CI on Python 3.10, 3.11, and 3.12
@@ -39,7 +68,13 @@ cd HorizonLink
 python -m venv .venv
 ```
 
-Activate the environment, then install:
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Then install the development package:
 
 ```bash
 pip install -e ".[dev]"
@@ -51,6 +86,12 @@ Optional plotting support:
 pip install -e ".[viz]"
 ```
 
+Optional browser dashboard:
+
+```bash
+pip install -e ".[dashboard]"
+```
+
 ## Command-line examples
 
 After installation, the `horizonlink` command is available.
@@ -60,6 +101,28 @@ After installation, the `horizonlink` command is available.
 ```bash
 horizonlink radius 10
 ```
+
+### Kerr black hole
+
+```bash
+horizonlink kerr 10 0.9 --frame-radius-rg 5
+```
+
+### Exterior-horizon toy link budget
+
+```bash
+horizonlink link-budget 10 2.0 1000000000 1000000000 --aperture-area-m2 100
+```
+
+Here `2.0` means the transmitter is at two Schwarzschild radii. The model rejects an emitter at or inside the event horizon.
+
+### End-to-end detectability
+
+```bash
+horizonlink link-detect 10 2.0 1e9 1e9 100 50 1e6 10 --aperture-area-m2 100
+```
+
+This combines the exterior link fraction with transmitter power, receiver system temperature, bandwidth, and integration time. It reports received power, thermal noise, instantaneous power SNR, idealized integrated radiometer SNR, and Shannon capacity.
 
 ### Binary symmetric channel capacity
 
@@ -79,21 +142,13 @@ horizonlink awgn-capacity 12 1000000
 horizonlink monte-carlo 0.1 --trials 200 --bits 20000 --seed 42
 ```
 
-### Exterior-horizon toy link budget
-
-```bash
-horizonlink link-budget 10 2.0 1000000000 1000000000 --aperture-area-m2 100
-```
-
-Here `2.0` means the transmitter is at two Schwarzschild radii. The model rejects an emitter at or inside the event horizon.
-
 ### Quantum teleportation toy model
 
 ```bash
-horizonlink teleport 1.57079632679 --phi 0.5 --resource-error 0.1
+horizonlink teleport 1.57079632679 --phi 0.5 --resource-error 0.1 --classical-bit-error 0.02
 ```
 
-This runs a standard three-qubit teleportation circuit with optional Pauli noise on Bob's half of the shared Bell pair and reports output fidelity plus Bob's reduced-state observables.
+This runs a standard three-qubit teleportation circuit with optional Pauli noise on Bob's half of the shared Bell pair and independent noise on Alice's two ordinary classical correction bits.
 
 ## Reproducible experiments
 
@@ -108,10 +163,22 @@ python experiments/run_horizon_profile.py \
   --output horizon_profile.csv
 ```
 
+Generate a Kerr frame-dragging profile:
+
+```bash
+python experiments/run_kerr_frame_dragging.py --mass-solar 10 --spin 0.9
+```
+
 Sweep Bell-resource noise versus teleportation fidelity:
 
 ```bash
 python experiments/run_teleportation_sweep.py
+```
+
+Generate a two-dimensional teleportation noise surface:
+
+```bash
+python experiments/run_teleportation_noise_surface.py
 ```
 
 The original channel-search experiment is also available:
@@ -125,23 +192,29 @@ python experiments/run_channel_sweep.py
 ```text
 horizonlink/
   channels/       Classical noisy-channel baselines
-  horizons/       Relativistic exterior-horizon calculations
-  metrics/        Information-theory metrics
+  detectors/      Thermal noise and receiver sensitivity models
+  horizons/       Schwarzschild and Kerr exterior calculations
+  metrics/        Classical and quantum information metrics
   protocols/      Recovery and teleportation protocol models
   quantum/        Small auditable quantum-state utilities
   search/         Parameter search helpers
   simulation/     Reproducible Monte Carlo experiments
   cli.py          Command-line interface
+  dashboard.py    Interactive HorizonLink Lab
   visualization.py
 experiments/       Runnable research scripts
 tests/             Automated tests
-docs/              Model assumptions and roadmap
+docs/              Model assumptions, dashboard guide, and roadmap
 .github/workflows/ Continuous integration
 ```
 
 ## Scientific interpretation
 
 The Schwarzschild helpers use an idealized, non-rotating, uncharged black hole. A static emitter arbitrarily close to the horizon is itself an idealization because the required proper acceleration diverges at the horizon.
+
+The Kerr helpers implement standard exterior geometry in Boyer-Lindquist coordinates. They are not a complete ray tracer, orbital integrator, plasma model, or general-relativistic radiative-transfer package.
+
+The detector layer starts with the Rayleigh-Jeans thermal-noise approximation `P_noise = kTB` and an idealized radiometer integration improvement proportional to `sqrt(B tau)`. Real hardware can be limited by receiver gain, aperture efficiency, sky background, atmosphere, polarization, interference, quantization, calibration, and systematic noise.
 
 The channel and quantum models are abstractions. A high simulated recovery or teleportation fidelity means the stated toy model preserved information under its assumptions; it does **not** demonstrate that a real black hole can transmit a chosen message from behind its event horizon.
 
