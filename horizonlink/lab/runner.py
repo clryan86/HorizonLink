@@ -13,7 +13,7 @@ from .registry import CalculationResult,calculation,registry
 class LabInput:
     mass_solar:float=10.0; spin_chi:float=0.0; charge_ratio_qm:float=0.0; emitter_radius_rs:float=1.01
     receiver_distance_m:float=1e9; emitted_hz:float=1e9; transmitter_power_w:float=1.0
-    aperture_area_m2:float=1.0; bandwidth_hz:float=1e6; system_temperature_k:float=50.0
+    aperture_area_m2:float=1.0; bandwidth_hz:float=1e6; system_temperature_k:float=50.0; integration_time_s:float=1.0; target_snr:float=5.0
 
 @dataclass(frozen=True)
 class LabReport:
