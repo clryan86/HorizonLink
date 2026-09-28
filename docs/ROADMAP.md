@@ -26,16 +26,23 @@
 - [x] Add a 2D quantum-resource / classical-channel fidelity surface
 - [ ] Add small circuit diagrams to the documentation
 
-## v0.4 — rotating horizons and deeper numerical experiments
+## v0.4 — rotating horizons, detector design, and reproducibility
 
 - [x] Add Kerr inner/outer horizon calculations
 - [x] Add Kerr static-limit / ergosphere calculations
 - [x] Add Kerr horizon angular velocity
 - [x] Expose Kerr quantities from the CLI
-- [ ] Add frame-dragging/ZAMO angular-velocity profiles outside the horizon
-- [ ] Add detector/background-noise models
+- [x] Add frame-dragging/ZAMO angular-velocity profiles outside the horizon
+- [x] Add thermal detector/background-noise baseline
+- [x] Add end-to-end exterior-link detectability calculations
+- [x] Add inverse design for transmitter power and maximum receiver distance
+- [x] Add inverse design for collecting area and integration time
+- [x] Add parameter-sweep persistence and experiment metadata
+- [x] Add atomic output writes that preserve prior results after failed runs
+- [x] Add versioned dashboard scenario exports
+- [x] Add scenario replay/regression checks in the dashboard and CLI
+- [x] Add package build/install smoke testing in CI
 - [ ] Add error-correcting-code comparisons
-- [ ] Add parameter-sweep persistence and experiment metadata
 - [ ] Add notebook examples that reproduce documented experiments
 - [ ] Add confidence intervals and convergence diagnostics
 
@@ -54,5 +61,6 @@
 4. How do entanglement fidelity and ordinary classical-channel quality jointly constrain teleportation-style recovery protocols?
 5. How does rotation change the geometry and observables available to exterior communication models?
 6. Can analogue-horizon systems provide experimentally accessible tests of the information-theory pieces?
+7. Which saved numerical results remain stable across model revisions, and which changes can be traced to explicit assumption or implementation updates?
 
 The roadmap favors falsifiable models and reproducible numerics over claims of exotic communication.
