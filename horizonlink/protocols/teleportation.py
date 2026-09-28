@@ -2,9 +2,11 @@
 
 The circuit here is standard quantum teleportation implemented directly with
 NumPy density matrices. Optional Pauli noise is applied to Bob's half of the
-Bell pair before the protocol. This is a quantum-information analogue only;
-it is not a model of sending information through or out of a black-hole event
-horizon.
+Bell pair before the protocol. The two classical correction bits may also pass
+through independent binary-symmetric channels.
+
+This is a quantum-information analogue only; it is not a model of sending
+information through or out of a black-hole event horizon.
 """
 
 from __future__ import annotations
@@ -73,16 +75,31 @@ def _noise_on_bob(rho: np.ndarray, error_probability: float) -> np.ndarray:
     return noisy
 
 
+def _bit_delivery_probability(sent: int, received: int, error_probability: float) -> float:
+    return error_probability if sent != received else 1.0 - error_probability
+
+
+def _correction_operator(bit_z: int, bit_x: int) -> np.ndarray:
+    correction = np.eye(2, dtype=complex)
+    if bit_x:
+        correction = X @ correction
+    if bit_z:
+        correction = Z @ correction
+    return correction
+
+
 def teleport(
     input_state: np.ndarray,
     *,
     resource_error_probability: float = 0.0,
+    classical_bit_error_probability: float = 0.0,
 ) -> np.ndarray:
     """Teleport one qubit and return Bob's output density matrix.
 
     Qubit order is: input (q0), Alice's Bell qubit (q1), Bob's Bell qubit (q2).
-    The result averages over Alice's four measurement outcomes after applying
-    the corresponding classical corrections to Bob's qubit.
+    ``resource_error_probability`` is Pauli noise on Bob's Bell qubit before
+    teleportation. ``classical_bit_error_probability`` independently flips each
+    of Alice's two measurement bits before Bob chooses his correction.
     """
     psi = np.asarray(input_state, dtype=complex)
     if psi.shape != (2,):
@@ -91,6 +108,9 @@ def teleport(
     if norm == 0:
         raise ValueError("input_state cannot be zero")
     psi = psi / norm
+
+    if not 0.0 <= classical_bit_error_probability <= 1.0:
+        raise ValueError("classical_bit_error_probability must be between 0 and 1")
 
     initial = np.kron(density_matrix(psi), density_matrix(bell_phi_plus()))
     rho = _noise_on_bob(initial, resource_error_probability)
@@ -102,28 +122,33 @@ def teleport(
 
     bob = np.zeros((2, 2), dtype=complex)
     total_probability = 0.0
+    q = classical_bit_error_probability
 
     for m0 in (0, 1):
         for m1 in (0, 1):
             projector = _projector(m0, m1)
             branch = projector @ rho @ projector
-            probability = float(np.real_if_close(np.trace(branch)).real)
-            if probability <= 0.0:
+            measurement_probability = float(np.real_if_close(np.trace(branch)).real)
+            if measurement_probability <= 0.0:
                 continue
-            branch /= probability
+            branch /= measurement_probability
 
-            correction = np.eye(2, dtype=complex)
-            if m1:
-                correction = X @ correction
-            if m0:
-                correction = Z @ correction
-            correction3 = _single_qubit_operator(correction, 2)
-            branch = correction3 @ branch @ correction3.conj().T
+            for received0 in (0, 1):
+                for received1 in (0, 1):
+                    classical_probability = _bit_delivery_probability(m0, received0, q)
+                    classical_probability *= _bit_delivery_probability(m1, received1, q)
+                    path_probability = measurement_probability * classical_probability
+                    if path_probability <= 0.0:
+                        continue
 
-            bob += probability * _reduced_bob(branch)
-            total_probability += probability
+                    correction3 = _single_qubit_operator(
+                        _correction_operator(received0, received1), 2
+                    )
+                    corrected = correction3 @ branch @ correction3.conj().T
+                    bob += path_probability * _reduced_bob(corrected)
+                    total_probability += path_probability
 
     if not math.isclose(total_probability, 1.0, rel_tol=1e-10, abs_tol=1e-10):
-        raise RuntimeError("teleportation measurement probabilities did not sum to one")
+        raise RuntimeError("teleportation branch probabilities did not sum to one")
 
     return bob
