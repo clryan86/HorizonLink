@@ -7,7 +7,6 @@ This is a standard Kerr exterior calculation, not a communication model.
 from __future__ import annotations
 
 import argparse
-import csv
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +17,7 @@ from horizonlink.horizons.kerr import (
     outer_horizon_radius,
 )
 from horizonlink.horizons.schwarzschild import M_SUN
+from horizonlink.provenance import experiment_metadata, write_csv_with_metadata
 
 
 def main() -> None:
@@ -40,26 +40,40 @@ def main() -> None:
         raise ValueError("--max-radius-rg must place the outer sample beyond the horizon")
 
     radii = np.geomspace(r_plus * (1.0 + 1.0e-9), max_radius, args.points)
-
-    with args.output.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=["radius_m", "radius_rg", "frame_dragging_rad_s"],
+    rows = []
+    for radius_m in radii:
+        radius = float(radius_m)
+        rows.append(
+            {
+                "radius_m": radius,
+                "radius_rg": radius / rg,
+                "frame_dragging_rad_s": frame_dragging_angular_velocity(
+                    mass_kg, args.spin, radius
+                ),
+            }
         )
-        writer.writeheader()
-        for radius_m in radii:
-            radius = float(radius_m)
-            writer.writerow(
-                {
-                    "radius_m": radius,
-                    "radius_rg": radius / rg,
-                    "frame_dragging_rad_s": frame_dragging_angular_velocity(
-                        mass_kg, args.spin, radius
-                    ),
-                }
-            )
 
-    print(f"wrote {args.points} rows to {args.output}")
+    metadata = experiment_metadata(
+        experiment="kerr-frame-dragging-profile",
+        model_level="established",
+        inputs={
+            "mass_solar": args.mass_solar,
+            "spin_chi": args.spin,
+            "points": args.points,
+            "max_radius_rg": args.max_radius_rg,
+            "sample_start_radius_m": float(radii[0]),
+            "outer_horizon_radius_m": r_plus,
+        },
+    )
+    data_path, sidecar = write_csv_with_metadata(
+        args.output,
+        fieldnames=["radius_m", "radius_rg", "frame_dragging_rad_s"],
+        rows=rows,
+        metadata=metadata,
+    )
+
+    print(f"wrote {len(rows)} rows to {data_path}")
+    print(f"wrote metadata to {sidecar}")
 
 
 if __name__ == "__main__":
