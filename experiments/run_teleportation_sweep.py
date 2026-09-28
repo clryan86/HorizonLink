@@ -6,12 +6,12 @@ signal crossing or escaping a classical event horizon.
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 import numpy as np
 
 from horizonlink.protocols.teleportation import teleport
+from horizonlink.provenance import experiment_metadata, write_csv_with_metadata
 from horizonlink.quantum.states import fidelity_pure, qubit_state
 
 CARDINAL_STATES = [
@@ -38,15 +38,36 @@ def run(points: int = 41, output_path: str = "results/teleportation_sweep.csv") 
         raise ValueError("points must be at least 2")
 
     path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["resource_error_probability", "average_fidelity"])
-        for probability in np.linspace(0.0, 1.0, points):
-            writer.writerow([probability, average_fidelity(float(probability))])
-
-    return path
+    probabilities = np.linspace(0.0, 1.0, points)
+    rows = [
+        {
+            "resource_error_probability": float(probability),
+            "average_fidelity": average_fidelity(float(probability)),
+        }
+        for probability in probabilities
+    ]
+    metadata = experiment_metadata(
+        experiment="teleportation-resource-noise-sweep",
+        model_level="analogue",
+        inputs={
+            "points": points,
+            "resource_error_min": 0.0,
+            "resource_error_max": 1.0,
+            "classical_bit_error_probability": 0.0,
+            "input_state_ensemble": "six cardinal Bloch-sphere states",
+            "pauli_noise_convention": (
+                "identity with probability 1-p; X/Y/Z each with probability p/3; "
+                "complete depolarization occurs at p=0.75"
+            ),
+        },
+    )
+    data_path, _ = write_csv_with_metadata(
+        path,
+        fieldnames=["resource_error_probability", "average_fidelity"],
+        rows=rows,
+        metadata=metadata,
+    )
+    return data_path
 
 
 def maybe_plot(csv_path: Path) -> None:
