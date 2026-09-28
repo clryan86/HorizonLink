@@ -42,7 +42,8 @@
 - [x] Add versioned dashboard scenario exports
 - [x] Add scenario replay/regression checks in the dashboard and CLI
 - [x] Add package build/install smoke testing in CI
-- [ ] Add error-correcting-code comparisons
+- [x] Add auditable repetition and Hamming(7,4) error-correcting-code comparisons
+- [x] Add provenance-backed ECC BER sweeps with explicit code-rate costs
 - [ ] Add notebook examples that reproduce documented experiments
 - [ ] Add confidence intervals and convergence diagnostics
 
@@ -62,5 +63,6 @@
 5. How does rotation change the geometry and observables available to exterior communication models?
 6. Can analogue-horizon systems provide experimentally accessible tests of the information-theory pieces?
 7. Which saved numerical results remain stable across model revisions, and which changes can be traced to explicit assumption or implementation updates?
+8. How should reliability gains from classical error correction be compared fairly against their bandwidth and redundancy costs in near-horizon toy links?
 
 The roadmap favors falsifiable models and reproducible numerics over claims of exotic communication.
