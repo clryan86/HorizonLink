@@ -15,6 +15,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--mass-solar',type=float,default=10.0)
     p.add_argument('--spin',type=float,default=0.0)
+    p.add_argument('--charge-ratio',type=float,default=0.0)
     p.add_argument('--radius-rs',type=float,default=1.01)
     p.add_argument('--receiver-distance-m',type=float,default=1e9)
     p.add_argument('--emitted-hz',type=float,default=1e9)
@@ -24,7 +25,7 @@ def main():
     p.add_argument('--system-temperature-k',type=float,default=50.0)
     a=p.parse_args()
     inp=LabInput(
-        mass_solar=a.mass_solar, spin_chi=a.spin, emitter_radius_rs=a.radius_rs,
+        mass_solar=a.mass_solar, spin_chi=a.spin, charge_ratio_qm=a.charge_ratio, emitter_radius_rs=a.radius_rs,
         receiver_distance_m=a.receiver_distance_m, emitted_hz=a.emitted_hz,
         transmitter_power_w=a.transmitter_power_w, aperture_area_m2=a.aperture_area_m2,
         bandwidth_hz=a.bandwidth_hz, system_temperature_k=a.system_temperature_k,
