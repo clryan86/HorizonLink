@@ -41,6 +41,7 @@ def _load_packs():
     # Import for registration. Keeping this explicit prevents hidden plugin magic
     # and makes a failed optional pack easy to diagnose.
     from . import calculation_pack  # noqa:F401
+    from . import calculation_pack_astro  # noqa:F401
 
 def run_lab(inp:LabInput)->LabReport:
     _load_packs(); results=[]
