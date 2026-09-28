@@ -13,8 +13,6 @@ import numpy as np
 
 from horizonlink.protocols.teleportation import teleport
 from horizonlink.quantum.states import fidelity_pure, qubit_state
-
-
 CARDINAL_STATES = [
     (0.0, 0.0),
     (np.pi, 0.0),
