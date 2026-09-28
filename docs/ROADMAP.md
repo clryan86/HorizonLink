@@ -20,14 +20,19 @@
 - [x] Add Bell-resource Pauli-noise model
 - [x] Add teleportation fidelity sweep
 - [x] Expose teleportation from the CLI
-- [ ] Add entanglement entropy helpers
-- [ ] Add Bell-state / CHSH diagnostics
-- [ ] Add explicit noisy classical side-channel models
+- [x] Add entanglement entropy helpers
+- [x] Add Bell-state / CHSH diagnostics
+- [x] Add explicit noisy classical side-channel models
+- [x] Add a 2D quantum-resource / classical-channel fidelity surface
 - [ ] Add small circuit diagrams to the documentation
 
-## v0.4 — deeper numerical experiments
+## v0.4 — rotating horizons and deeper numerical experiments
 
-- [ ] Add Kerr exterior calculations and frame-dragging examples
+- [x] Add Kerr inner/outer horizon calculations
+- [x] Add Kerr static-limit / ergosphere calculations
+- [x] Add Kerr horizon angular velocity
+- [x] Expose Kerr quantities from the CLI
+- [ ] Add frame-dragging/ZAMO angular-velocity profiles outside the horizon
 - [ ] Add detector/background-noise models
 - [ ] Add error-correcting-code comparisons
 - [ ] Add parameter-sweep persistence and experiment metadata
@@ -47,6 +52,7 @@
 2. How quickly do classical communication resources degrade as a transmitter approaches an idealized horizon from outside?
 3. Which black-hole-information thought experiments can be represented as reproducible circuits or stochastic models?
 4. How do entanglement fidelity and ordinary classical-channel quality jointly constrain teleportation-style recovery protocols?
-5. Can analogue-horizon systems provide experimentally accessible tests of the information-theory pieces?
+5. How does rotation change the geometry and observables available to exterior communication models?
+6. Can analogue-horizon systems provide experimentally accessible tests of the information-theory pieces?
 
 The roadmap favors falsifiable models and reproducible numerics over claims of exotic communication.
