@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from itertools import product
+import math
 from typing import Iterable
 
 from .dimensionless_search import search_invariants
@@ -10,14 +11,14 @@ from .runner import LabInput, run_lab
 
 
 def flatten_report(inp: LabInput) -> dict[str, float]:
-    """Run one lab point and flatten successful numeric outputs."""
+    """Run one lab point and flatten successful finite numeric outputs."""
     report = run_lab(inp)
     row: dict[str, float] = {}
     for result in report.calculations:
         if result.status != "ok":
             continue
-        for key, value in result.values.items():
-            if isinstance(value, (int, float)):
+        for key, value in result.outputs.items():
+            if isinstance(value, (int, float)) and math.isfinite(float(value)):
                 row[f"{result.name}.{key}"] = float(value)
     return row
 
