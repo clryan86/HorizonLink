@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 from horizonlink.channels.binary_symmetric import capacity_bits_per_use
 from horizonlink.channels.gaussian import capacity_from_snr, snr_db_to_linear
@@ -32,6 +36,8 @@ def _parser() -> argparse.ArgumentParser:
         description="Reproducible toy-model experiments for horizon information channels.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("dashboard", help="Launch the interactive HorizonLink Lab browser dashboard")
 
     radius = sub.add_parser("radius", help="Compute a Schwarzschild radius")
     radius.add_argument("mass_solar", type=float, help="Black-hole mass in solar masses")
@@ -105,8 +111,22 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _launch_dashboard(parser: argparse.ArgumentParser) -> int:
+    if importlib.util.find_spec("streamlit") is None:
+        parser.error('Dashboard dependencies are not installed. Run: pip install -e ".[dashboard]"')
+    dashboard_path = Path(__file__).with_name("dashboard.py")
+    return subprocess.call(
+        [sys.executable, "-m", "streamlit", "run", str(dashboard_path)],
+        check=False,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "dashboard":
+        return _launch_dashboard(parser)
 
     if args.command == "radius":
         mass_kg = args.mass_solar * M_SUN
