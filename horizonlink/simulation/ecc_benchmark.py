@@ -11,6 +11,7 @@ from horizonlink.codes.hamming74 import decode as hamming_decode
 from horizonlink.codes.hamming74 import encode as hamming_encode
 from horizonlink.codes.repetition import decode as repetition_decode
 from horizonlink.codes.repetition import encode as repetition_encode
+from horizonlink.metrics.statistics import summarize_samples
 
 
 @dataclass(frozen=True)
@@ -19,33 +20,55 @@ class ECCBenchmarkResult:
     trials: int
     bits_per_trial: int
     seed: int
+    confidence: float
     uncoded_mean_ber: float
     uncoded_std_ber: float
+    uncoded_standard_error: float | None
+    uncoded_ci_low: float | None
+    uncoded_ci_high: float | None
+    uncoded_relative_standard_error: float | None
     repetition3_mean_ber: float
     repetition3_std_ber: float
+    repetition3_standard_error: float | None
+    repetition3_ci_low: float | None
+    repetition3_ci_high: float | None
+    repetition3_relative_standard_error: float | None
     hamming74_mean_ber: float
     hamming74_std_ber: float
+    hamming74_standard_error: float | None
+    hamming74_ci_low: float | None
+    hamming74_ci_high: float | None
+    hamming74_relative_standard_error: float | None
 
-    def as_dict(self) -> dict[str, int | float]:
+    def as_dict(self) -> dict[str, int | float | None]:
         return {
             "flip_probability": self.flip_probability,
             "trials": self.trials,
             "bits_per_trial": self.bits_per_trial,
             "seed": self.seed,
+            "confidence": self.confidence,
             "uncoded_code_rate": 1.0,
             "uncoded_mean_ber": self.uncoded_mean_ber,
             "uncoded_std_ber": self.uncoded_std_ber,
+            "uncoded_standard_error": self.uncoded_standard_error,
+            "uncoded_ci_low": self.uncoded_ci_low,
+            "uncoded_ci_high": self.uncoded_ci_high,
+            "uncoded_relative_standard_error": self.uncoded_relative_standard_error,
             "repetition3_code_rate": 1.0 / 3.0,
             "repetition3_mean_ber": self.repetition3_mean_ber,
             "repetition3_std_ber": self.repetition3_std_ber,
+            "repetition3_standard_error": self.repetition3_standard_error,
+            "repetition3_ci_low": self.repetition3_ci_low,
+            "repetition3_ci_high": self.repetition3_ci_high,
+            "repetition3_relative_standard_error": self.repetition3_relative_standard_error,
             "hamming74_code_rate": 4.0 / 7.0,
             "hamming74_mean_ber": self.hamming74_mean_ber,
             "hamming74_std_ber": self.hamming74_std_ber,
+            "hamming74_standard_error": self.hamming74_standard_error,
+            "hamming74_ci_low": self.hamming74_ci_low,
+            "hamming74_ci_high": self.hamming74_ci_high,
+            "hamming74_relative_standard_error": self.hamming74_relative_standard_error,
         }
-
-
-def _mean_std(values: np.ndarray) -> tuple[float, float]:
-    return float(np.mean(values)), float(np.std(values, ddof=0))
 
 
 def run_ecc_benchmark(
@@ -54,13 +77,15 @@ def run_ecc_benchmark(
     trials: int = 100,
     bits_per_trial: int = 12_000,
     seed: int = 0,
+    confidence: float = 0.95,
 ) -> ECCBenchmarkResult:
     """Compare payload BER for uncoded, repetition-3, and Hamming(7,4) links.
 
     Every scheme experiences the same independent BSC crossover probability per
     transmitted bit. The coded schemes therefore transmit more physical bits;
     their code rates are returned beside BER so reliability is not presented
-    without the corresponding redundancy cost.
+    without the corresponding redundancy cost. Confidence intervals summarize
+    trial-to-trial uncertainty with a transparent normal approximation.
     """
     flip_probability = float(flip_probability)
     if not np.isfinite(flip_probability) or not 0.0 <= flip_probability <= 1.0:
@@ -97,18 +122,31 @@ def run_ecc_benchmark(
         )
         hamming[index] = np.mean(hamming_decode(hamming_received) != source)
 
-    uncoded_mean, uncoded_std = _mean_std(uncoded)
-    repetition_mean, repetition_std = _mean_std(repetition)
-    hamming_mean, hamming_std = _mean_std(hamming)
+    uncoded_summary = summarize_samples(uncoded, confidence=confidence)
+    repetition_summary = summarize_samples(repetition, confidence=confidence)
+    hamming_summary = summarize_samples(hamming, confidence=confidence)
     return ECCBenchmarkResult(
         flip_probability=flip_probability,
         trials=trials,
         bits_per_trial=bits_per_trial,
         seed=seed,
-        uncoded_mean_ber=uncoded_mean,
-        uncoded_std_ber=uncoded_std,
-        repetition3_mean_ber=repetition_mean,
-        repetition3_std_ber=repetition_std,
-        hamming74_mean_ber=hamming_mean,
-        hamming74_std_ber=hamming_std,
+        confidence=float(uncoded_summary["confidence"]),
+        uncoded_mean_ber=float(uncoded_summary["mean"]),
+        uncoded_std_ber=float(np.std(uncoded, ddof=0)),
+        uncoded_standard_error=uncoded_summary["standard_error"],
+        uncoded_ci_low=uncoded_summary["confidence_interval_low"],
+        uncoded_ci_high=uncoded_summary["confidence_interval_high"],
+        uncoded_relative_standard_error=uncoded_summary["relative_standard_error"],
+        repetition3_mean_ber=float(repetition_summary["mean"]),
+        repetition3_std_ber=float(np.std(repetition, ddof=0)),
+        repetition3_standard_error=repetition_summary["standard_error"],
+        repetition3_ci_low=repetition_summary["confidence_interval_low"],
+        repetition3_ci_high=repetition_summary["confidence_interval_high"],
+        repetition3_relative_standard_error=repetition_summary["relative_standard_error"],
+        hamming74_mean_ber=float(hamming_summary["mean"]),
+        hamming74_std_ber=float(np.std(hamming, ddof=0)),
+        hamming74_standard_error=hamming_summary["standard_error"],
+        hamming74_ci_low=hamming_summary["confidence_interval_low"],
+        hamming74_ci_high=hamming_summary["confidence_interval_high"],
+        hamming74_relative_standard_error=hamming_summary["relative_standard_error"],
     )
