@@ -1,0 +1,14 @@
+{
+  "bob_probability_0": 0.5,
+  "bob_probability_1": 0.5,
+  "classical_bit_error_probability": 0.0,
+  "horizonlink_version": "0.4.0",
+  "model_level": "analogue",
+  "pauli_noise_convention": "I:1-p; X:Y:Z=p/3; fully depolarizing at p=0.75",
+  "phi_rad": 0.73,
+  "resource_error_probability": 0.75,
+  "schema_version": 1,
+  "teleportation_fidelity": 0.5,
+  "theta_rad": 1.17,
+  "workspace": "quantum-information"
+}
