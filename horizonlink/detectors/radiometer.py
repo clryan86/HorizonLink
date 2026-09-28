@@ -9,6 +9,7 @@ atmosphere, polarization, quantization, interference, or calibration effects.
 from __future__ import annotations
 
 import math
+import sys
 
 BOLTZMANN_CONSTANT = 1.380649e-23  # J/K, exact SI value
 
@@ -100,6 +101,33 @@ def minimum_detectable_signal_power(
     value = target * noise_power / math.sqrt(sample_count)
     if not math.isfinite(value):
         raise OverflowError("minimum detectable signal power overflowed")
+    return value
+
+
+def required_integration_time(
+    signal_power_w: float,
+    system_temperature_k: float,
+    bandwidth_hz: float,
+    target_snr: float = 5.0,
+) -> float:
+    """Return integration time needed to reach ``target_snr`` in seconds.
+
+    This is the analytic inverse of :func:`integrated_radiometer_snr` under the
+    same ideal white-noise assumptions. A zero signal can never reach a
+    positive target SNR and is rejected.
+    """
+    target = _positive(target_snr, "target_snr")
+    bandwidth = _positive(bandwidth_hz, "bandwidth_hz")
+    instantaneous = power_snr(signal_power_w, system_temperature_k, bandwidth)
+    if instantaneous <= 0.0:
+        raise ValueError("signal_power_w must be positive to solve integration time")
+
+    log_time = 2.0 * (math.log(target) - math.log(instantaneous)) - math.log(bandwidth)
+    if log_time > math.log(sys.float_info.max):
+        raise OverflowError("required integration time overflowed")
+    value = math.exp(log_time)
+    if value == 0.0 or not math.isfinite(value):
+        raise OverflowError("required integration time is outside floating-point range")
     return value
 
 
