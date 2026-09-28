@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pandas as pd
 import streamlit as st
 
 from horizonlink.channels.gaussian import capacity_from_snr
@@ -106,16 +107,19 @@ def _exterior_link_tab() -> None:
             horizon_link_fraction(mass_kg, radius_m, receiver_distance_m, aperture_area_m2)
         )
 
+    max_fraction = max(float(np.max(fractions)), np.finfo(float).tiny)
+    profile = pd.DataFrame(
+        {
+            "radius / Schwarzschild radius": radii_rs,
+            "received/emitted frequency": np.asarray(frequencies),
+            "normalized collected power fraction": np.asarray(fractions) / max_fraction,
+        }
+    )
     st.markdown("**Near-horizon profile**")
     st.line_chart(
-        {
-            "received/emitted frequency": np.asarray(frequencies),
-            "normalized collected power fraction": np.asarray(fractions)
-            / max(float(np.max(fractions)), np.finfo(float).tiny),
-        },
-        x=radii_rs,
-        x_label="radius / Schwarzschild radius",
-        y_label="normalized value",
+        profile,
+        x="radius / Schwarzschild radius",
+        y=["received/emitted frequency", "normalized collected power fraction"],
     )
 
 
@@ -153,13 +157,14 @@ def _kerr_tab() -> None:
             for r in radius_rg
         ]
     )
-    st.markdown("**Frame-dragging profile**")
-    st.line_chart(
-        {"frame dragging (rad/s)": omega},
-        x=radius_rg,
-        x_label="radius / gravitational radius (GM/c²)",
-        y_label="angular velocity (rad/s)",
+    profile = pd.DataFrame(
+        {
+            "radius / gravitational radius": radius_rg,
+            "frame dragging (rad/s)": omega,
+        }
     )
+    st.markdown("**Frame-dragging profile**")
+    st.line_chart(profile, x="radius / gravitational radius", y="frame dragging (rad/s)")
 
 
 def _quantum_tab() -> None:
@@ -197,13 +202,14 @@ def _quantum_tab() -> None:
         )
         fidelities.append(fidelity_pure(state, swept_output))
 
-    st.markdown("**Resource-noise sweep**")
-    st.line_chart(
-        {"fidelity": np.asarray(fidelities)},
-        x=error_values,
-        x_label="Bell-resource error probability",
-        y_label="fidelity",
+    profile = pd.DataFrame(
+        {
+            "Bell-resource error probability": error_values,
+            "fidelity": np.asarray(fidelities),
+        }
     )
+    st.markdown("**Resource-noise sweep**")
+    st.line_chart(profile, x="Bell-resource error probability", y="fidelity")
 
 
 def main() -> None:
