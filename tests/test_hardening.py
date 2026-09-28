@@ -3,11 +3,16 @@ import math
 import numpy as np
 import pytest
 
-from horizonlink.channels.binary_symmetric import capacity_bits_per_use, transmit as bsc_transmit
+from horizonlink.channels.binary_symmetric import capacity_bits_per_use
+from horizonlink.channels.binary_symmetric import transmit as bsc_transmit
 from horizonlink.channels.erasure import transmit as erasure_transmit
 from horizonlink.horizons.kerr import horizon_radii, static_limit_radius
 from horizonlink.horizons.link_budget import geometric_collection_fraction
-from horizonlink.horizons.schwarzschild import M_SUN, gravitational_redshift_factor, schwarzschild_radius
+from horizonlink.horizons.schwarzschild import (
+    M_SUN,
+    gravitational_redshift_factor,
+    schwarzschild_radius,
+)
 from horizonlink.protocols.hayden_preskill import recovery_proxy_score
 from horizonlink.search.grid import maximize
 
