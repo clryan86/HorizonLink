@@ -29,6 +29,27 @@ def test_resource_depolarization_reduces_fidelity_predictably():
     assert fidelity_pure(state, output) == pytest.approx(0.8, abs=1e-12)
 
 
+def test_classical_side_channel_errors_reduce_fidelity():
+    state = qubit_state(0.0)
+    clean = teleport(state)
+    noisy = teleport(state, classical_bit_error_probability=0.25)
+
+    assert fidelity_pure(state, clean) == pytest.approx(1.0, abs=1e-12)
+    assert fidelity_pure(state, noisy) < 1.0
+    assert np.trace(noisy) == pytest.approx(1.0)
+
+
+def test_fully_randomized_classical_bits_destroy_correction_information():
+    state = qubit_state(np.pi / 2.0, 0.37)
+    output = teleport(state, classical_bit_error_probability=0.5)
+    assert fidelity_pure(state, output) == pytest.approx(0.5, abs=1e-12)
+
+
 def test_resource_noise_probability_is_validated():
     with pytest.raises(ValueError):
         teleport(qubit_state(0.0), resource_error_probability=1.01)
+
+
+def test_classical_noise_probability_is_validated():
+    with pytest.raises(ValueError):
+        teleport(qubit_state(0.0), classical_bit_error_probability=-0.01)
