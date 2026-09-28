@@ -13,10 +13,24 @@ import math
 BOLTZMANN_CONSTANT = 1.380649e-23  # J/K, exact SI value
 
 
-def _positive(value: float, name: str) -> float:
+def _finite(value: float, name: str) -> float:
     value = float(value)
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite")
+    return value
+
+
+def _positive(value: float, name: str) -> float:
+    value = _finite(value, name)
     if value <= 0.0:
         raise ValueError(f"{name} must be positive")
+    return value
+
+
+def _nonnegative(value: float, name: str) -> float:
+    value = _finite(value, name)
+    if value < 0.0:
+        raise ValueError(f"{name} cannot be negative")
     return value
 
 
@@ -24,7 +38,10 @@ def thermal_noise_power(system_temperature_k: float, bandwidth_hz: float) -> flo
     """Return ideal Rayleigh-Jeans thermal-noise power ``k T B`` in watts."""
     temperature = _positive(system_temperature_k, "system_temperature_k")
     bandwidth = _positive(bandwidth_hz, "bandwidth_hz")
-    return BOLTZMANN_CONSTANT * temperature * bandwidth
+    value = BOLTZMANN_CONSTANT * temperature * bandwidth
+    if not math.isfinite(value):
+        raise OverflowError("thermal-noise power overflowed")
+    return value
 
 
 def power_snr(
@@ -33,10 +50,11 @@ def power_snr(
     bandwidth_hz: float,
 ) -> float:
     """Return instantaneous signal-power / thermal-noise-power ratio."""
-    signal_power = float(signal_power_w)
-    if signal_power < 0.0:
-        raise ValueError("signal_power_w cannot be negative")
-    return signal_power / thermal_noise_power(system_temperature_k, bandwidth_hz)
+    signal_power = _nonnegative(signal_power_w, "signal_power_w")
+    value = signal_power / thermal_noise_power(system_temperature_k, bandwidth_hz)
+    if not math.isfinite(value):
+        raise OverflowError("power SNR overflowed")
+    return value
 
 
 def integrated_radiometer_snr(
@@ -54,9 +72,15 @@ def integrated_radiometer_snr(
     """
     bandwidth = _positive(bandwidth_hz, "bandwidth_hz")
     integration_time = _positive(integration_time_s, "integration_time_s")
-    return power_snr(signal_power_w, system_temperature_k, bandwidth) * math.sqrt(
-        bandwidth * integration_time
+    sample_count = bandwidth * integration_time
+    if not math.isfinite(sample_count):
+        raise OverflowError("bandwidth * integration_time_s overflowed")
+    value = power_snr(signal_power_w, system_temperature_k, bandwidth) * math.sqrt(
+        sample_count
     )
+    if not math.isfinite(value):
+        raise OverflowError("integrated radiometer SNR overflowed")
+    return value
 
 
 def minimum_detectable_signal_power(
@@ -69,8 +93,14 @@ def minimum_detectable_signal_power(
     target = _positive(target_snr, "target_snr")
     bandwidth = _positive(bandwidth_hz, "bandwidth_hz")
     integration_time = _positive(integration_time_s, "integration_time_s")
+    sample_count = bandwidth * integration_time
+    if not math.isfinite(sample_count):
+        raise OverflowError("bandwidth * integration_time_s overflowed")
     noise_power = thermal_noise_power(system_temperature_k, bandwidth)
-    return target * noise_power / math.sqrt(bandwidth * integration_time)
+    value = target * noise_power / math.sqrt(sample_count)
+    if not math.isfinite(value):
+        raise OverflowError("minimum detectable signal power overflowed")
+    return value
 
 
 def snr_to_db(snr_linear: float) -> float:
