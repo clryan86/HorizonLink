@@ -36,6 +36,7 @@ from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
 from horizonlink.protocols.teleportation import teleport
 from horizonlink.quantum.states import fidelity_pure, qubit_state
 from horizonlink.scenarios import comparison_rows, replay_scenario, validate_scenario
+from horizonlink.simulation.ecc_benchmark import run_ecc_benchmark
 from horizonlink.simulation.monte_carlo import run_bsc_trials
 
 
@@ -97,6 +98,15 @@ def _parser() -> argparse.ArgumentParser:
     mc.add_argument("--trials", type=int, default=100)
     mc.add_argument("--bits", type=int, default=10_000)
     mc.add_argument("--seed", type=int, default=0)
+
+    ecc = sub.add_parser(
+        "ecc-benchmark",
+        help="Compare uncoded, repetition-3, and Hamming(7,4) payload BER on a BSC",
+    )
+    ecc.add_argument("flip_probability", type=_finite_float)
+    ecc.add_argument("--trials", type=int, default=100)
+    ecc.add_argument("--bits", type=int, default=12_000)
+    ecc.add_argument("--seed", type=int, default=0)
 
     link = sub.add_parser("link-budget", help="Estimate a toy exterior-horizon link fraction")
     link.add_argument("mass_solar", type=_finite_float)
@@ -235,6 +245,14 @@ def _calculate(args: argparse.Namespace) -> dict[str, object]:
 
     if args.command == "monte-carlo":
         return run_bsc_trials(
+            args.flip_probability,
+            trials=args.trials,
+            bits_per_trial=args.bits,
+            seed=args.seed,
+        ).as_dict()
+
+    if args.command == "ecc-benchmark":
+        return run_ecc_benchmark(
             args.flip_probability,
             trials=args.trials,
             bits_per_trial=args.bits,
