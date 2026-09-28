@@ -7,6 +7,11 @@ import json
 
 from horizonlink.channels.binary_symmetric import capacity_bits_per_use
 from horizonlink.channels.gaussian import capacity_from_snr, snr_db_to_linear
+from horizonlink.horizons.kerr import (
+    horizon_angular_velocity,
+    horizon_radii,
+    static_limit_radius,
+)
 from horizonlink.horizons.link_budget import horizon_link_fraction, redshifted_frequency
 from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
 from horizonlink.protocols.teleportation import teleport
@@ -23,6 +28,16 @@ def _parser() -> argparse.ArgumentParser:
 
     radius = sub.add_parser("radius", help="Compute a Schwarzschild radius")
     radius.add_argument("mass_solar", type=float, help="Black-hole mass in solar masses")
+
+    kerr = sub.add_parser("kerr", help="Compute Kerr horizon and ergosphere quantities")
+    kerr.add_argument("mass_solar", type=float)
+    kerr.add_argument("chi", type=float, help="Dimensionless spin cJ/(GM^2), with |chi| <= 1")
+    kerr.add_argument(
+        "--polar-angle",
+        type=float,
+        default=1.5707963267948966,
+        help="Boyer-Lindquist polar angle in radians for static-limit radius",
+    )
 
     bsc = sub.add_parser("bsc-capacity", help="Binary symmetric channel capacity")
     bsc.add_argument("flip_probability", type=float)
@@ -71,6 +86,19 @@ def main(argv: list[str] | None = None) -> int:
         payload = {
             "mass_solar": args.mass_solar,
             "schwarzschild_radius_m": schwarzschild_radius(mass_kg),
+        }
+    elif args.command == "kerr":
+        mass_kg = args.mass_solar * M_SUN
+        r_plus, r_minus = horizon_radii(mass_kg, args.chi)
+        payload = {
+            "mass_solar": args.mass_solar,
+            "chi": args.chi,
+            "outer_horizon_radius_m": r_plus,
+            "inner_horizon_radius_m": r_minus,
+            "static_limit_radius_m": static_limit_radius(
+                mass_kg, args.chi, args.polar_angle
+            ),
+            "horizon_angular_velocity_rad_s": horizon_angular_velocity(mass_kg, args.chi),
         }
     elif args.command == "bsc-capacity":
         payload = {
