@@ -39,6 +39,7 @@ from horizonlink.horizons.link_budget import horizon_link_fraction, redshifted_f
 from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
 from horizonlink.protocols.teleportation import teleport
 from horizonlink.quantum.states import fidelity_pure, qubit_state
+from horizonlink.scenarios import ScenarioError, comparison_rows, replay_scenario, validate_scenario
 
 
 def _format_scientific(value: float, unit: str = "") -> str:
@@ -377,6 +378,82 @@ def _quantum_tab() -> None:
     _download_pair(scenario, profile, "horizonlink_quantum")
 
 
+def _scenario_replay_tab() -> None:
+    st.subheader("Scenario replay and regression check")
+    st.caption(
+        "Upload a scenario JSON previously downloaded from HorizonLink Lab. The saved outputs are "
+        "not trusted: HorizonLink validates the envelope, recomputes the scenario from its saved "
+        "inputs, and compares overlapping numeric results with the current implementation."
+    )
+
+    uploaded = st.file_uploader("Upload HorizonLink scenario JSON", type=["json"])
+    if uploaded is None:
+        st.info("Download a scenario from any lab workspace, then upload it here to replay it.")
+        return
+
+    try:
+        raw = uploaded.getvalue().decode("utf-8")
+        parsed = json.loads(raw)
+        scenario = validate_scenario(parsed)
+        replayed = replay_scenario(scenario)
+        rows = comparison_rows(scenario, replayed)
+    except UnicodeDecodeError:
+        st.error("The uploaded file is not valid UTF-8 text.")
+        return
+    except json.JSONDecodeError as exc:
+        st.error(f"The uploaded file is not valid JSON: {exc.msg}")
+        return
+    except (ScenarioError, ValueError, OverflowError) as exc:
+        st.error(f"Scenario replay failed validation: {exc}")
+        return
+
+    metadata_columns = st.columns(4)
+    metadata_columns[0].metric("Workspace", str(scenario["workspace"]))
+    metadata_columns[1].metric("Model level", str(scenario["model_level"]))
+    metadata_columns[2].metric("Saved version", str(scenario["horizonlink_version"]))
+    metadata_columns[3].metric("Current version", __version__)
+
+    if scenario["horizonlink_version"] != __version__:
+        st.warning(
+            "This scenario was saved by a different HorizonLink version. That is useful here: "
+            "the comparison below shows whether overlapping numerical outputs changed."
+        )
+
+    st.markdown("**Recomputed outputs**")
+    st.json(replayed)
+
+    st.markdown("**Saved vs recomputed numeric outputs**")
+    if not rows:
+        st.info("The scenario contains no numeric output fields that overlap the replay result.")
+    else:
+        comparison = pd.DataFrame(rows)
+        st.dataframe(comparison, use_container_width=True, hide_index=True)
+        max_relative = float(comparison["relative_difference"].max())
+        if max_relative <= 1.0e-12:
+            st.success("Overlapping saved outputs reproduce to numerical precision.")
+        else:
+            st.warning(
+                "At least one overlapping output changed. Inspect the table and the saved/current "
+                "HorizonLink versions before interpreting the difference."
+            )
+
+    replay_payload = {
+        "schema_version": 1,
+        "source_horizonlink_version": scenario["horizonlink_version"],
+        "replayed_with_horizonlink_version": __version__,
+        "workspace": scenario["workspace"],
+        "recomputed": replayed,
+        "comparison": rows,
+    }
+    st.download_button(
+        "Download replay report JSON",
+        data=json.dumps(replay_payload, indent=2, sort_keys=True, allow_nan=False),
+        file_name="horizonlink_replay_report.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(page_title="HorizonLink Lab", page_icon="🕳️", layout="wide")
     st.title("HorizonLink Lab")
@@ -390,13 +467,17 @@ def main() -> None:
         "event horizon."
     )
 
-    exterior, kerr, quantum = st.tabs(["Exterior Link", "Kerr Rotation", "Quantum Information"])
+    exterior, kerr, quantum, replay = st.tabs(
+        ["Exterior Link", "Kerr Rotation", "Quantum Information", "Scenario Replay"]
+    )
     with exterior:
         _exterior_link_tab()
     with kerr:
         _kerr_tab()
     with quantum:
         _quantum_tab()
+    with replay:
+        _scenario_replay_tab()
 
 
 if __name__ == "__main__":
