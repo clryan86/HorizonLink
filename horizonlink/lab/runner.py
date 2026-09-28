@@ -43,6 +43,7 @@ def _load_packs():
     from . import calculation_pack  # noqa:F401
     from . import calculation_pack_astro  # noqa:F401
     from . import calculation_pack_horizon  # noqa:F401
+    from . import calculation_pack_charge  # noqa:F401
 
 def run_lab(inp:LabInput)->LabReport:
     _load_packs(); results=[]
