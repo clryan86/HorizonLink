@@ -52,6 +52,25 @@ def test_invalid_inputs_are_rejected():
         snr_to_db(0.0)
 
 
+def test_nonfinite_inputs_are_rejected():
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError):
+            thermal_noise_power(bad, 1.0)
+        with pytest.raises(ValueError):
+            thermal_noise_power(10.0, bad)
+        with pytest.raises(ValueError):
+            power_snr(bad, 10.0, 1.0)
+        with pytest.raises(ValueError):
+            integrated_radiometer_snr(1.0, 10.0, 1.0, bad)
+        with pytest.raises(ValueError):
+            minimum_detectable_signal_power(10.0, 1.0, 1.0, bad)
+
+
+def test_bandwidth_times_integration_overflow_is_rejected():
+    with pytest.raises(OverflowError, match="bandwidth \* integration_time_s"):
+        integrated_radiometer_snr(1.0, 10.0, 1.0e308, 1.0e308)
+
+
 def test_noise_power_scales_linearly_with_bandwidth():
     narrow = thermal_noise_power(100.0, 1.0e3)
     wide = thermal_noise_power(100.0, 1.0e6)
