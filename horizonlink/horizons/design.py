@@ -13,6 +13,13 @@ from horizonlink.detectors.radiometer import minimum_detectable_signal_power
 from horizonlink.horizons.link_budget import horizon_link_fraction, redshift_power_factor
 
 
+def _positive_finite(value: float, name: str) -> float:
+    value = float(value)
+    if not math.isfinite(value) or value <= 0.0:
+        raise ValueError(f"{name} must be finite and positive")
+    return value
+
+
 def required_transmitter_power(
     mass_kg: float,
     emitter_radius_m: float,
@@ -36,7 +43,12 @@ def required_transmitter_power(
         receiver_distance_m,
         aperture_area_m2,
     )
-    return received_required / fraction
+    if not math.isfinite(fraction) or fraction <= 0.0:
+        raise ValueError("link fraction is zero or non-finite; target SNR is unreachable")
+    value = received_required / fraction
+    if not math.isfinite(value):
+        raise OverflowError("required transmitter power overflowed")
+    return value
 
 
 def maximum_receiver_distance(
@@ -56,12 +68,8 @@ def maximum_receiver_distance(
     when all redshifted transmitter power is collected, a ``ValueError`` is
     raised.
     """
-    transmitter_power = float(transmitter_power_w)
-    aperture_area = float(aperture_area_m2)
-    if transmitter_power <= 0.0:
-        raise ValueError("transmitter_power_w must be positive")
-    if aperture_area <= 0.0:
-        raise ValueError("aperture_area_m2 must be positive")
+    transmitter_power = _positive_finite(transmitter_power_w, "transmitter_power_w")
+    aperture_area = _positive_finite(aperture_area_m2, "aperture_area_m2")
 
     required_received = minimum_detectable_signal_power(
         system_temperature_k,
@@ -70,11 +78,30 @@ def maximum_receiver_distance(
         target_snr,
     )
     redshift_factor = redshift_power_factor(mass_kg, emitter_radius_m)
+    if not math.isfinite(redshift_factor) or redshift_factor <= 0.0:
+        raise ValueError("redshift power factor is zero or non-finite")
+
     maximum_received = transmitter_power * redshift_factor
+    if not math.isfinite(maximum_received):
+        raise OverflowError("maximum received power overflowed")
     if required_received > maximum_received:
         raise ValueError(
             "target SNR cannot be reached even with unit geometric collection fraction"
         )
 
-    numerator = transmitter_power * redshift_factor * aperture_area
-    return math.sqrt(numerator / (4.0 * math.pi * required_received))
+    # Rearrange d = sqrt(P_tx * f_redshift * A / (4*pi*P_required)).
+    # Compute through logarithms when direct multiplication would overflow.
+    log_distance_squared = (
+        math.log(transmitter_power)
+        + math.log(redshift_factor)
+        + math.log(aperture_area)
+        - math.log(4.0 * math.pi)
+        - math.log(required_received)
+    )
+    log_distance = 0.5 * log_distance_squared
+    if log_distance > math.log(float.fromhex("0x1.fffffffffffffp+1023")):
+        raise OverflowError("maximum receiver distance overflowed")
+    value = math.exp(log_distance)
+    if not math.isfinite(value) or value <= 0.0:
+        raise OverflowError("maximum receiver distance is non-finite")
+    return value
