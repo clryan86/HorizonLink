@@ -7,6 +7,7 @@ from horizonlink.detectors.radiometer import (
     integrated_radiometer_snr,
     minimum_detectable_signal_power,
     power_snr,
+    required_integration_time,
     snr_to_db,
     thermal_noise_power,
 )
@@ -33,6 +34,31 @@ def test_minimum_detectable_signal_round_trip():
     power = minimum_detectable_signal_power(80.0, 1.0e5, 10.0, target)
     recovered = integrated_radiometer_snr(power, 80.0, 1.0e5, 10.0)
     assert recovered == pytest.approx(target, rel=1e-12)
+
+
+def test_required_integration_time_round_trip():
+    signal_power = 3.0e-18
+    temperature = 70.0
+    bandwidth = 2.0e5
+    target = 8.0
+    integration_time = required_integration_time(
+        signal_power,
+        temperature,
+        bandwidth,
+        target,
+    )
+    recovered = integrated_radiometer_snr(
+        signal_power,
+        temperature,
+        bandwidth,
+        integration_time,
+    )
+    assert recovered == pytest.approx(target, rel=1e-12)
+
+
+def test_required_integration_time_rejects_zero_signal():
+    with pytest.raises(ValueError, match="positive"):
+        required_integration_time(0.0, 50.0, 1.0e6, 5.0)
 
 
 def test_snr_to_db():
@@ -64,6 +90,8 @@ def test_nonfinite_inputs_are_rejected():
             integrated_radiometer_snr(1.0, 10.0, 1.0, bad)
         with pytest.raises(ValueError):
             minimum_detectable_signal_power(10.0, 1.0, 1.0, bad)
+        with pytest.raises(ValueError):
+            required_integration_time(1.0, 10.0, 1.0, bad)
 
 
 def test_bandwidth_times_integration_overflow_is_rejected():
