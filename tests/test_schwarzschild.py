@@ -1,6 +1,10 @@
 import pytest
 
-from horizonlink.horizons.schwarzschild import M_SUN, gravitational_redshift_factor, schwarzschild_radius
+from horizonlink.horizons.schwarzschild import (
+    M_SUN,
+    gravitational_redshift_factor,
+    schwarzschild_radius,
+)
 
 
 def test_solar_schwarzschild_radius_is_about_2953_m():
