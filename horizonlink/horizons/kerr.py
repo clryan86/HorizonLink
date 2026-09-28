@@ -62,7 +62,34 @@ def horizon_angular_velocity(mass_kg: float, chi: float) -> float:
 
     Positive and negative spin values preserve their rotation sign.
     """
+    _validate_spin(chi)
+    r_plus = outer_horizon_radius(mass_kg, chi)
+    return C * chi / (2.0 * r_plus)
+
+
+def frame_dragging_angular_velocity(
+    mass_kg: float,
+    chi: float,
+    radius_m: float,
+    polar_angle_rad: float = math.pi / 2.0,
+) -> float:
+    """Return the ZAMO frame-dragging angular velocity in rad/s.
+
+    This is ``-g_tphi/g_phiphi`` for the Kerr metric in Boyer-Lindquist
+    coordinates. The function is defined here at and outside the outer horizon.
+    At ``r = r_+`` it reduces to the horizon angular velocity.
+    """
     rg = gravitational_radius(mass_kg)
     chi = _validate_spin(chi)
     r_plus = outer_horizon_radius(mass_kg, chi)
-    return C * chi / (2.0 * r_plus)
+    if radius_m < r_plus:
+        raise ValueError("radius_m must be at or outside the outer Kerr horizon")
+
+    a = chi * rg
+    sin_theta = math.sin(polar_angle_rad)
+    delta = radius_m**2 - 2.0 * rg * radius_m + a**2
+    big_a = (radius_m**2 + a**2) ** 2 - a**2 * delta * sin_theta**2
+    if big_a <= 0.0:
+        raise ValueError("Kerr metric denominator is non-positive at this coordinate")
+
+    return C * (2.0 * rg * a * radius_m) / big_a
