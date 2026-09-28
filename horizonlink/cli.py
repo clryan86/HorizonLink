@@ -40,7 +40,7 @@ def _parser() -> argparse.ArgumentParser:
     link.add_argument("emitter_radius_rs", type=float, help="Emitter radius in Schwarzschild radii")
     link.add_argument("receiver_distance_m", type=float)
     link.add_argument("emitted_hz", type=float)
-    link.add_argument("--aperture-gain", type=float, default=1.0)
+    link.add_argument("--aperture-area-m2", type=float, default=1.0)
 
     return parser
 
@@ -50,7 +50,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "radius":
         mass_kg = args.mass_solar * M_SUN
-        payload = {"mass_solar": args.mass_solar, "schwarzschild_radius_m": schwarzschild_radius(mass_kg)}
+        payload = {
+            "mass_solar": args.mass_solar,
+            "schwarzschild_radius_m": schwarzschild_radius(mass_kg),
+        }
     elif args.command == "bsc-capacity":
         payload = {
             "flip_probability": args.flip_probability,
@@ -77,13 +80,14 @@ def main(argv: list[str] | None = None) -> int:
         payload = {
             "mass_solar": args.mass_solar,
             "emitter_radius_rs": args.emitter_radius_rs,
-            "redshifted_frequency_hz": redshifted_frequency(mass_kg, emitter_radius, args.emitted_hz),
+            "redshifted_frequency_hz": redshifted_frequency(
+                mass_kg, emitter_radius, args.emitted_hz
+            ),
             "received_power_fraction": horizon_link_fraction(
                 mass_kg,
                 emitter_radius,
                 args.receiver_distance_m,
-                args.emitted_hz,
-                args.aperture_gain,
+                args.aperture_area_m2,
             ),
         }
 
