@@ -60,6 +60,47 @@ jobs:
       - name: Pytest
         run: pytest
 
+  package-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install built wheel
+        shell: bash
+        run: |
+          WHEEL=$(find dist -maxdepth 1 -name 'horizonlink-*.whl' -print -quit)
+          test -n "$WHEEL"
+          python -m pip install "$WHEEL"
+
+      - name: Smoke-test installed package outside checkout
+        shell: bash
+        run: |
+          cd /tmp
+          horizonlink radius 1 > horizonlink-radius.json
+          python - <<'PY'
+          import importlib.metadata as metadata
+          import json
+          import horizonlink
+
+          with open("/tmp/horizonlink-radius.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          assert 2900.0 < payload["schwarzschild_radius_m"] < 3000.0
+          assert horizonlink.__version__ == metadata.version("horizonlink")
+          PY
+
   dashboard-smoke:
     runs-on: ubuntu-latest
 
