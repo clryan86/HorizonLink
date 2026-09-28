@@ -15,9 +15,14 @@ from horizonlink.channels.gaussian import capacity_from_snr, capacity_from_snr_d
 from horizonlink.detectors.radiometer import (
     integrated_radiometer_snr,
     power_snr,
+    required_integration_time,
     thermal_noise_power,
 )
-from horizonlink.horizons.design import maximum_receiver_distance, required_transmitter_power
+from horizonlink.horizons.design import (
+    maximum_receiver_distance,
+    required_collecting_area,
+    required_transmitter_power,
+)
 from horizonlink.horizons.kerr import (
     frame_dragging_angular_velocity,
     gravitational_radius,
@@ -287,6 +292,12 @@ def _calculate(args: argparse.Namespace) -> dict[str, float | int | None]:
             args.integration_time_s,
             args.target_snr,
         )
+        required_time = required_integration_time(
+            received_power,
+            args.system_temperature_k,
+            args.bandwidth_hz,
+            args.target_snr,
+        )
         try:
             maximum_distance = maximum_receiver_distance(
                 mass_kg,
@@ -298,8 +309,19 @@ def _calculate(args: argparse.Namespace) -> dict[str, float | int | None]:
                 args.integration_time_s,
                 args.target_snr,
             )
+            required_area = required_collecting_area(
+                mass_kg,
+                emitter_radius,
+                args.transmitter_power_w,
+                args.receiver_distance_m,
+                args.system_temperature_k,
+                args.bandwidth_hz,
+                args.integration_time_s,
+                args.target_snr,
+            )
         except ValueError:
             maximum_distance = None
+            required_area = None
         return {
             "mass_solar": args.mass_solar,
             "emitter_radius_rs": args.emitter_radius_rs,
@@ -309,6 +331,8 @@ def _calculate(args: argparse.Namespace) -> dict[str, float | int | None]:
             "target_integrated_snr": args.target_snr,
             "current_integrated_snr": current_snr,
             "required_transmitter_power_w": required_power,
+            "required_collecting_area_m2": required_area,
+            "required_integration_time_s": required_time,
             "maximum_receiver_distance_m": maximum_distance,
         }
 
