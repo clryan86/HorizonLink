@@ -6,12 +6,12 @@ model and does not represent communication through a classical event horizon.
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 import numpy as np
 
 from horizonlink.protocols.teleportation import teleport
+from horizonlink.provenance import experiment_metadata, write_csv_with_metadata
 from horizonlink.quantum.states import fidelity_pure, qubit_state
 
 CARDINAL_STATES = [
@@ -47,31 +47,50 @@ def run(
         raise ValueError("both grid dimensions must contain at least two points")
 
     path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
     resource_values = np.linspace(0.0, 1.0, resource_points)
     classical_values = np.linspace(0.0, 0.5, classical_points)
 
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(
-            [
-                "resource_error_probability",
-                "classical_bit_error_probability",
-                "average_fidelity",
-            ]
-        )
-        for resource_error in resource_values:
-            for classical_error in classical_values:
-                writer.writerow(
-                    [
-                        float(resource_error),
-                        float(classical_error),
-                        average_fidelity(float(resource_error), float(classical_error)),
-                    ]
-                )
+    rows = []
+    for resource_error in resource_values:
+        for classical_error in classical_values:
+            rows.append(
+                {
+                    "resource_error_probability": float(resource_error),
+                    "classical_bit_error_probability": float(classical_error),
+                    "average_fidelity": average_fidelity(
+                        float(resource_error), float(classical_error)
+                    ),
+                }
+            )
 
-    return path
+    metadata = experiment_metadata(
+        experiment="teleportation-quantum-classical-noise-surface",
+        model_level="analogue",
+        inputs={
+            "resource_points": resource_points,
+            "classical_points": classical_points,
+            "resource_error_min": 0.0,
+            "resource_error_max": 1.0,
+            "classical_bit_error_min": 0.0,
+            "classical_bit_error_max": 0.5,
+            "input_state_ensemble": "six cardinal Bloch-sphere states",
+            "pauli_noise_convention": (
+                "identity with probability 1-p; X/Y/Z each with probability p/3; "
+                "complete depolarization occurs at p=0.75"
+            ),
+        },
+    )
+    data_path, _ = write_csv_with_metadata(
+        path,
+        fieldnames=[
+            "resource_error_probability",
+            "classical_bit_error_probability",
+            "average_fidelity",
+        ],
+        rows=rows,
+        metadata=metadata,
+    )
+    return data_path
 
 
 def maybe_plot(csv_path: Path) -> None:
