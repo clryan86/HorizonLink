@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from horizonlink import __version__
 from horizonlink.channels.gaussian import capacity_from_snr
 from horizonlink.detectors.radiometer import (
     integrated_radiometer_snr,
@@ -45,10 +46,15 @@ def _download_pair(
     profile: pd.DataFrame,
     prefix: str,
 ) -> None:
+    payload = {
+        "schema_version": 1,
+        "horizonlink_version": __version__,
+        **scenario,
+    }
     left, right = st.columns(2)
     left.download_button(
         "Download scenario JSON",
-        data=json.dumps(scenario, indent=2, sort_keys=True),
+        data=json.dumps(payload, indent=2, sort_keys=True, allow_nan=False),
         file_name=f"{prefix}_scenario.json",
         mime="application/json",
         use_container_width=True,
@@ -149,7 +155,9 @@ def _exterior_link_tab() -> None:
 
     st.markdown("**Inverse design for the target SNR**")
     design_columns = st.columns(2)
-    design_columns[0].metric("Required transmitter power", _format_scientific(required_power_w, "W"))
+    design_columns[0].metric(
+        "Required transmitter power", _format_scientific(required_power_w, "W")
+    )
     design_columns[1].metric("Maximum receiver distance", max_distance_label)
 
     radii_rs = np.geomspace(1.0001, 50.0, 240)
@@ -179,6 +187,7 @@ def _exterior_link_tab() -> None:
 
     scenario = {
         "workspace": "exterior-link",
+        "model_level": "analogue",
         "mass_solar": float(mass_solar),
         "emitter_radius_rs": float(emitter_radius_rs),
         "emitted_frequency_hz": emitted_hz,
@@ -245,6 +254,7 @@ def _kerr_tab() -> None:
 
     scenario = {
         "workspace": "kerr-rotation",
+        "model_level": "established",
         "mass_solar": float(mass_solar),
         "chi": float(chi),
         "polar_angle_deg": float(polar_angle_deg),
@@ -267,6 +277,10 @@ def _quantum_tab() -> None:
     phi = st.slider("Input-state φ (radians)", -math.pi, math.pi, 0.0, 0.01)
     resource_error = st.slider("Bell-resource Pauli error probability", 0.0, 1.0, 0.0, 0.01)
     classical_error = st.slider("Classical correction-bit flip probability", 0.0, 0.5, 0.0, 0.01)
+    st.caption(
+        "Pauli-noise convention: identity occurs with probability 1-p and X/Y/Z each with p/3. "
+        "Complete depolarization occurs at p=0.75; p=1 applies a non-identity Pauli every time."
+    )
 
     state = qubit_state(theta, phi)
     output = teleport(
@@ -302,6 +316,7 @@ def _quantum_tab() -> None:
 
     scenario = {
         "workspace": "quantum-information",
+        "model_level": "analogue",
         "theta_rad": float(theta),
         "phi_rad": float(phi),
         "resource_error_probability": float(resource_error),
@@ -309,6 +324,7 @@ def _quantum_tab() -> None:
         "teleportation_fidelity": fidelity,
         "bob_probability_0": float(output[0, 0].real),
         "bob_probability_1": float(output[1, 1].real),
+        "pauli_noise_convention": "I:1-p; X:Y:Z=p/3; fully depolarizing at p=0.75",
     }
     _download_pair(scenario, profile, "horizonlink_quantum")
 
