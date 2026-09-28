@@ -95,7 +95,7 @@ def test_nonfinite_inputs_are_rejected():
 
 
 def test_bandwidth_times_integration_overflow_is_rejected():
-    with pytest.raises(OverflowError, match="bandwidth \* integration_time_s"):
+    with pytest.raises(OverflowError, match=r"bandwidth \* integration_time_s"):
         integrated_radiometer_snr(1.0, 10.0, 1.0e308, 1.0e308)
 
 
