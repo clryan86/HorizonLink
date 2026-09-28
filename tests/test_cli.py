@@ -43,6 +43,8 @@ def test_link_design_command(capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["target_integrated_snr"] == 5.0
     assert payload["required_transmitter_power_w"] > 0.0
+    assert payload["required_collecting_area_m2"] > 0.0
+    assert payload["required_integration_time_s"] > 0.0
     assert payload["maximum_receiver_distance_m"] > 0.0
     assert payload["current_integrated_snr"] > 0.0
 
