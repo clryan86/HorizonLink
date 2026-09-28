@@ -8,6 +8,7 @@ Launch from the repository root after installing the dashboard extra:
 
 from __future__ import annotations
 
+import json
 import math
 
 import numpy as np
@@ -36,6 +37,28 @@ from horizonlink.quantum.states import fidelity_pure, qubit_state
 def _format_scientific(value: float, unit: str = "") -> str:
     suffix = f" {unit}" if unit else ""
     return f"{value:.4e}{suffix}"
+
+
+def _download_pair(
+    scenario: dict[str, float | str],
+    profile: pd.DataFrame,
+    prefix: str,
+) -> None:
+    left, right = st.columns(2)
+    left.download_button(
+        "Download scenario JSON",
+        data=json.dumps(scenario, indent=2, sort_keys=True),
+        file_name=f"{prefix}_scenario.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+    right.download_button(
+        "Download profile CSV",
+        data=profile.to_csv(index=False),
+        file_name=f"{prefix}_profile.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
 
 
 def _exterior_link_tab() -> None:
@@ -122,6 +145,25 @@ def _exterior_link_tab() -> None:
         y=["received/emitted frequency", "normalized collected power fraction"],
     )
 
+    scenario = {
+        "workspace": "exterior-link",
+        "mass_solar": float(mass_solar),
+        "emitter_radius_rs": float(emitter_radius_rs),
+        "emitted_frequency_hz": emitted_hz,
+        "transmitter_power_w": transmitter_power_w,
+        "receiver_distance_m": receiver_distance_m,
+        "aperture_area_m2": aperture_area_m2,
+        "bandwidth_hz": bandwidth_hz,
+        "system_temperature_k": float(system_temperature_k),
+        "integration_time_s": float(integration_time_s),
+        "received_frequency_hz": received_hz,
+        "received_signal_power_w": received_power_w,
+        "instantaneous_power_snr": instant_snr,
+        "integrated_radiometer_snr": integrated_snr,
+        "shannon_capacity_bits_per_second": capacity,
+    }
+    _download_pair(scenario, profile, "horizonlink_exterior")
+
 
 def _kerr_tab() -> None:
     st.subheader("Kerr rotation and frame dragging")
@@ -165,6 +207,18 @@ def _kerr_tab() -> None:
     )
     st.markdown("**Frame-dragging profile**")
     st.line_chart(profile, x="radius / gravitational radius", y="frame dragging (rad/s)")
+
+    scenario = {
+        "workspace": "kerr-rotation",
+        "mass_solar": float(mass_solar),
+        "chi": float(chi),
+        "polar_angle_deg": float(polar_angle_deg),
+        "outer_horizon_radius_m": r_plus,
+        "inner_horizon_radius_m": r_minus,
+        "static_limit_radius_m": static_limit,
+        "horizon_angular_velocity_rad_s": omega_h,
+    }
+    _download_pair(scenario, profile, "horizonlink_kerr")
 
 
 def _quantum_tab() -> None:
@@ -210,6 +264,18 @@ def _quantum_tab() -> None:
     )
     st.markdown("**Resource-noise sweep**")
     st.line_chart(profile, x="Bell-resource error probability", y="fidelity")
+
+    scenario = {
+        "workspace": "quantum-information",
+        "theta_rad": float(theta),
+        "phi_rad": float(phi),
+        "resource_error_probability": float(resource_error),
+        "classical_bit_error_probability": float(classical_error),
+        "teleportation_fidelity": fidelity,
+        "bob_probability_0": float(output[0, 0].real),
+        "bob_probability_1": float(output[1, 1].real),
+    }
+    _download_pair(scenario, profile, "horizonlink_quantum")
 
 
 def main() -> None:
