@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from horizonlink import __version__
 from horizonlink.channels.binary_symmetric import capacity_bits_per_use
 from horizonlink.channels.gaussian import capacity_from_snr, capacity_from_snr_db
 from horizonlink.detectors.radiometer import (
@@ -34,6 +35,7 @@ from horizonlink.horizons.link_budget import horizon_link_fraction, redshifted_f
 from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
 from horizonlink.protocols.teleportation import teleport
 from horizonlink.quantum.states import fidelity_pure, qubit_state
+from horizonlink.scenarios import comparison_rows, replay_scenario, validate_scenario
 from horizonlink.simulation.monte_carlo import run_bsc_trials
 
 
@@ -55,6 +57,12 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("dashboard", help="Launch the interactive HorizonLink Lab browser dashboard")
+
+    replay = sub.add_parser(
+        "scenario-replay",
+        help="Validate and recompute a saved HorizonLink Lab scenario JSON file",
+    )
+    replay.add_argument("path", type=Path, help="Path to a HorizonLink scenario JSON file")
 
     radius = sub.add_parser("radius", help="Compute a Schwarzschild radius")
     radius.add_argument("mass_solar", type=_finite_float, help="Black-hole mass in solar masses")
@@ -170,7 +178,21 @@ def _link_geometry(args: argparse.Namespace) -> tuple[float, float, float]:
     return mass_kg, emitter_radius, link_fraction
 
 
-def _calculate(args: argparse.Namespace) -> dict[str, float | int | None]:
+def _calculate(args: argparse.Namespace) -> dict[str, object]:
+    if args.command == "scenario-replay":
+        parsed = json.loads(args.path.read_text(encoding="utf-8"))
+        scenario = validate_scenario(parsed)
+        replayed = replay_scenario(scenario)
+        return {
+            "schema_version": 1,
+            "source_horizonlink_version": scenario["horizonlink_version"],
+            "replayed_with_horizonlink_version": __version__,
+            "workspace": scenario["workspace"],
+            "model_level": scenario["model_level"],
+            "recomputed": replayed,
+            "comparison": comparison_rows(scenario, replayed),
+        }
+
     if args.command == "radius":
         mass_kg = args.mass_solar * M_SUN
         return {
@@ -357,7 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         payload = _calculate(args)
         output = json.dumps(payload, indent=2, sort_keys=True, allow_nan=False)
-    except (ValueError, OverflowError) as exc:
+    except (OSError, ValueError, OverflowError) as exc:
         parser.error(str(exc))
 
     print(output)
