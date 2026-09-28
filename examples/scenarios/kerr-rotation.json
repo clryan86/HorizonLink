@@ -1,0 +1,13 @@
+{
+  "chi": 0.9,
+  "horizon_angular_velocity_rad_s": 6362.51349841589,
+  "horizonlink_version": "0.4.0",
+  "inner_horizon_radius_m": 8330.042954130204,
+  "mass_solar": 10.0,
+  "model_level": "established",
+  "outer_horizon_radius_m": 21203.35086653858,
+  "polar_angle_deg": 90.0,
+  "schema_version": 1,
+  "static_limit_radius_m": 29533.393820668785,
+  "workspace": "kerr-rotation"
+}
