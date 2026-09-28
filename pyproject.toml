@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "horizonlink"
-version = "0.1.0"
+version = "0.2.0"
 description = "Research sandbox for horizon and information-channel experiments"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,14 +14,25 @@ dependencies = [
   "numpy>=1.24",
 ]
 
+[project.scripts]
+horizonlink = "horizonlink.cli:main"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "ruff>=0.6",
+]
+viz = [
+  "matplotlib>=3.8",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
 
 [tool.setuptools.packages.find]
 include = ["horizonlink*"]
