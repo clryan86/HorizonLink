@@ -16,8 +16,8 @@ import math
 import numpy as np
 
 from horizonlink.quantum.states import (
-    H,
     I2,
+    H,
     X,
     Y,
     Z,
