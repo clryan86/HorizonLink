@@ -49,14 +49,50 @@ def test_link_design_command(capsys):
     assert payload["current_integrated_snr"] > 0.0
 
 
+def test_monte_carlo_command_accepts_confidence(capsys):
+    assert main(
+        [
+            "monte-carlo",
+            "0.05",
+            "--trials",
+            "6",
+            "--bits",
+            "1000",
+            "--seed",
+            "9",
+            "--confidence",
+            "0.9",
+        ]
+    ) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["confidence"] == 0.9
+    assert payload["confidence_interval_low"] < payload["mean_bit_error_rate"]
+    assert payload["confidence_interval_high"] > payload["mean_bit_error_rate"]
+
+
 def test_ecc_benchmark_command(capsys):
-    assert main(["ecc-benchmark", "0.05", "--trials", "4", "--bits", "4000", "--seed", "7"]) == 0
+    assert main(
+        [
+            "ecc-benchmark",
+            "0.05",
+            "--trials",
+            "4",
+            "--bits",
+            "4000",
+            "--seed",
+            "7",
+            "--confidence",
+            "0.9",
+        ]
+    ) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["flip_probability"] == 0.05
+    assert payload["confidence"] == 0.9
     assert payload["repetition3_code_rate"] == pytest.approx(1.0 / 3.0)
     assert payload["hamming74_code_rate"] == pytest.approx(4.0 / 7.0)
     assert payload["repetition3_mean_ber"] < payload["uncoded_mean_ber"]
     assert payload["hamming74_mean_ber"] < payload["uncoded_mean_ber"]
+    assert payload["uncoded_ci_low"] < payload["uncoded_mean_ber"] < payload["uncoded_ci_high"]
 
 
 def test_scenario_replay_command(tmp_path, capsys):
