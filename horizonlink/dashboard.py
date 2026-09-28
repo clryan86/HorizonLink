@@ -3,7 +3,7 @@
 Launch from the repository root after installing the dashboard extra:
 
     python -m pip install -e ".[dashboard]"
-    python -m streamlit run horizonlink/dashboard.py
+    horizonlink dashboard
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from horizonlink.detectors.radiometer import (
     power_snr,
     thermal_noise_power,
 )
+from horizonlink.horizons.design import maximum_receiver_distance, required_transmitter_power
 from horizonlink.horizons.kerr import (
     frame_dragging_angular_velocity,
     gravitational_radius,
@@ -76,6 +77,7 @@ def _exterior_link_tab() -> None:
         )
         emitted_log_hz = st.slider("log10 emitted frequency (Hz)", 3.0, 15.0, 9.0, 0.1)
         transmitter_log_w = st.slider("log10 transmitter power (W)", -6.0, 15.0, 2.0, 0.1)
+        target_snr = st.number_input("Target integrated SNR", 0.01, 1.0e6, 5.0)
 
     with right:
         distance_log_m = st.slider("log10 receiver distance (m)", 3.0, 20.0, 9.0, 0.1)
@@ -107,6 +109,31 @@ def _exterior_link_tab() -> None:
     )
     capacity = capacity_from_snr(instant_snr, bandwidth_hz)
     received_hz = redshifted_frequency(mass_kg, emitter_radius_m, emitted_hz)
+    required_power_w = required_transmitter_power(
+        mass_kg,
+        emitter_radius_m,
+        receiver_distance_m,
+        aperture_area_m2,
+        system_temperature_k,
+        bandwidth_hz,
+        integration_time_s,
+        target_snr,
+    )
+    try:
+        max_distance_m = maximum_receiver_distance(
+            mass_kg,
+            emitter_radius_m,
+            transmitter_power_w,
+            aperture_area_m2,
+            system_temperature_k,
+            bandwidth_hz,
+            integration_time_s,
+            target_snr,
+        )
+        max_distance_label = _format_scientific(max_distance_m, "m")
+    except ValueError:
+        max_distance_m = 0.0
+        max_distance_label = "unreachable"
 
     metric_columns = st.columns(4)
     metric_columns[0].metric("Schwarzschild radius", _format_scientific(rs, "m"))
@@ -119,6 +146,11 @@ def _exterior_link_tab() -> None:
     metric_columns[1].metric("Integrated SNR", _format_scientific(integrated_snr))
     metric_columns[2].metric("Shannon capacity", _format_scientific(capacity, "bit/s"))
     metric_columns[3].metric("Collected fraction", _format_scientific(link_fraction))
+
+    st.markdown("**Inverse design for the target SNR**")
+    design_columns = st.columns(2)
+    design_columns[0].metric("Required transmitter power", _format_scientific(required_power_w, "W"))
+    design_columns[1].metric("Maximum receiver distance", max_distance_label)
 
     radii_rs = np.geomspace(1.0001, 50.0, 240)
     frequencies = []
@@ -156,11 +188,14 @@ def _exterior_link_tab() -> None:
         "bandwidth_hz": bandwidth_hz,
         "system_temperature_k": float(system_temperature_k),
         "integration_time_s": float(integration_time_s),
+        "target_integrated_snr": float(target_snr),
         "received_frequency_hz": received_hz,
         "received_signal_power_w": received_power_w,
         "instantaneous_power_snr": instant_snr,
         "integrated_radiometer_snr": integrated_snr,
         "shannon_capacity_bits_per_second": capacity,
+        "required_transmitter_power_w": required_power_w,
+        "maximum_receiver_distance_m": max_distance_m,
     }
     _download_pair(scenario, profile, "horizonlink_exterior")
 
