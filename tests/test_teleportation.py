@@ -29,6 +29,19 @@ def test_resource_depolarization_reduces_fidelity_predictably():
     assert fidelity_pure(state, output) == pytest.approx(0.8, abs=1e-12)
 
 
+def test_pauli_noise_is_fully_depolarizing_at_three_quarters():
+    state = qubit_state(1.17, 0.73)
+    output = teleport(state, resource_error_probability=0.75)
+    assert output == pytest.approx(np.eye(2) / 2.0, abs=1e-12)
+    assert fidelity_pure(state, output) == pytest.approx(0.5, abs=1e-12)
+
+
+def test_pauli_noise_at_probability_one_is_not_complete_depolarization():
+    state = qubit_state(1.17, 0.73)
+    output = teleport(state, resource_error_probability=1.0)
+    assert fidelity_pure(state, output) == pytest.approx(1.0 / 3.0, abs=1e-12)
+
+
 def test_classical_side_channel_errors_reduce_fidelity():
     state = qubit_state(0.0)
     clean = teleport(state)
