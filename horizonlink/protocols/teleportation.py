@@ -15,7 +15,24 @@ import math
 
 import numpy as np
 
-from horizonlink.quantum.states import I2, H, X, Y, Z, bell_phi_plus, density_matrix
+from horizonlink.quantum.states import (
+    H,
+    I2,
+    X,
+    Y,
+    Z,
+    bell_phi_plus,
+    density_matrix,
+    normalize,
+    validate_density_matrix,
+)
+
+
+def _probability(name: str, value: float) -> float:
+    value = float(value)
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+        raise ValueError(f"{name} must be finite and between 0 and 1")
+    return value
 
 
 def _single_qubit_operator(gate: np.ndarray, target: int) -> np.ndarray:
@@ -63,9 +80,7 @@ def _reduced_bob(rho: np.ndarray) -> np.ndarray:
 
 
 def _noise_on_bob(rho: np.ndarray, error_probability: float) -> np.ndarray:
-    if not 0.0 <= error_probability <= 1.0:
-        raise ValueError("error_probability must be between 0 and 1")
-    p = error_probability
+    p = _probability("resource_error_probability", error_probability)
     if p == 0.0:
         return rho
     noisy = (1.0 - p) * rho
@@ -101,16 +116,14 @@ def teleport(
     teleportation. ``classical_bit_error_probability`` independently flips each
     of Alice's two measurement bits before Bob chooses his correction.
     """
-    psi = np.asarray(input_state, dtype=complex)
-    if psi.shape != (2,):
-        raise ValueError("input_state must contain two amplitudes")
-    norm = np.linalg.norm(psi)
-    if norm == 0:
-        raise ValueError("input_state cannot be zero")
-    psi = psi / norm
+    psi = normalize(input_state)
+    if psi.size != 2:
+        raise ValueError("input_state must contain exactly two amplitudes")
 
-    if not 0.0 <= classical_bit_error_probability <= 1.0:
-        raise ValueError("classical_bit_error_probability must be between 0 and 1")
+    resource_error_probability = _probability(
+        "resource_error_probability", resource_error_probability
+    )
+    q = _probability("classical_bit_error_probability", classical_bit_error_probability)
 
     initial = np.kron(density_matrix(psi), density_matrix(bell_phi_plus()))
     rho = _noise_on_bob(initial, resource_error_probability)
@@ -122,13 +135,15 @@ def teleport(
 
     bob = np.zeros((2, 2), dtype=complex)
     total_probability = 0.0
-    q = classical_bit_error_probability
 
     for m0 in (0, 1):
         for m1 in (0, 1):
             projector = _projector(m0, m1)
             branch = projector @ rho @ projector
-            measurement_probability = float(np.real_if_close(np.trace(branch)).real)
+            branch_trace = np.trace(branch)
+            if abs(branch_trace.imag) > 1.0e-10:
+                raise RuntimeError("measurement branch probability became complex")
+            measurement_probability = float(branch_trace.real)
             if measurement_probability <= 0.0:
                 continue
             branch /= measurement_probability
@@ -151,4 +166,4 @@ def teleport(
     if not math.isclose(total_probability, 1.0, rel_tol=1e-10, abs_tol=1e-10):
         raise RuntimeError("teleportation branch probabilities did not sum to one")
 
-    return bob
+    return validate_density_matrix(bob, dimension=2)
