@@ -7,7 +7,14 @@ import json
 
 from horizonlink.channels.binary_symmetric import capacity_bits_per_use
 from horizonlink.channels.gaussian import capacity_from_snr, snr_db_to_linear
+from horizonlink.detectors.radiometer import (
+    integrated_radiometer_snr,
+    power_snr,
+    thermal_noise_power,
+)
 from horizonlink.horizons.kerr import (
+    frame_dragging_angular_velocity,
+    gravitational_radius,
     horizon_angular_velocity,
     horizon_radii,
     static_limit_radius,
@@ -38,6 +45,12 @@ def _parser() -> argparse.ArgumentParser:
         default=1.5707963267948966,
         help="Boyer-Lindquist polar angle in radians for static-limit radius",
     )
+    kerr.add_argument(
+        "--frame-radius-rg",
+        type=float,
+        default=10.0,
+        help="Radius in gravitational radii GM/c^2 for frame-dragging output",
+    )
 
     bsc = sub.add_parser("bsc-capacity", help="Binary symmetric channel capacity")
     bsc.add_argument("flip_probability", type=float)
@@ -58,6 +71,20 @@ def _parser() -> argparse.ArgumentParser:
     link.add_argument("receiver_distance_m", type=float)
     link.add_argument("emitted_hz", type=float)
     link.add_argument("--aperture-area-m2", type=float, default=1.0)
+
+    detect = sub.add_parser(
+        "link-detect",
+        help="Combine the exterior link model with idealized thermal detector sensitivity",
+    )
+    detect.add_argument("mass_solar", type=float)
+    detect.add_argument("emitter_radius_rs", type=float)
+    detect.add_argument("receiver_distance_m", type=float)
+    detect.add_argument("emitted_hz", type=float)
+    detect.add_argument("transmitter_power_w", type=float)
+    detect.add_argument("system_temperature_k", type=float)
+    detect.add_argument("bandwidth_hz", type=float)
+    detect.add_argument("integration_time_s", type=float)
+    detect.add_argument("--aperture-area-m2", type=float, default=1.0)
 
     tp = sub.add_parser("teleport", help="Run the three-qubit teleportation toy model")
     tp.add_argument("theta", type=float, help="Input-state Bloch polar angle in radians")
@@ -90,6 +117,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "kerr":
         mass_kg = args.mass_solar * M_SUN
         r_plus, r_minus = horizon_radii(mass_kg, args.chi)
+        rg = gravitational_radius(mass_kg)
+        frame_radius = args.frame_radius_rg * rg
         payload = {
             "mass_solar": args.mass_solar,
             "chi": args.chi,
@@ -99,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
                 mass_kg, args.chi, args.polar_angle
             ),
             "horizon_angular_velocity_rad_s": horizon_angular_velocity(mass_kg, args.chi),
+            "frame_radius_rg": args.frame_radius_rg,
+            "frame_dragging_angular_velocity_rad_s": frame_dragging_angular_velocity(
+                mass_kg, args.chi, frame_radius, args.polar_angle
+            ),
         }
     elif args.command == "bsc-capacity":
         payload = {
@@ -135,6 +168,47 @@ def main(argv: list[str] | None = None) -> int:
             "bob_probability_0": float(output[0, 0].real),
             "bob_probability_1": float(output[1, 1].real),
             "bob_coherence_magnitude": float(abs(output[0, 1])),
+        }
+    elif args.command == "link-detect":
+        if args.transmitter_power_w < 0.0:
+            raise ValueError("transmitter_power_w cannot be negative")
+        mass_kg = args.mass_solar * M_SUN
+        rs = schwarzschild_radius(mass_kg)
+        emitter_radius = args.emitter_radius_rs * rs
+        link_fraction = horizon_link_fraction(
+            mass_kg,
+            emitter_radius,
+            args.receiver_distance_m,
+            args.aperture_area_m2,
+        )
+        received_power = args.transmitter_power_w * link_fraction
+        instantaneous_snr = power_snr(
+            received_power,
+            args.system_temperature_k,
+            args.bandwidth_hz,
+        )
+        integrated_snr = integrated_radiometer_snr(
+            received_power,
+            args.system_temperature_k,
+            args.bandwidth_hz,
+            args.integration_time_s,
+        )
+        payload = {
+            "mass_solar": args.mass_solar,
+            "emitter_radius_rs": args.emitter_radius_rs,
+            "redshifted_frequency_hz": redshifted_frequency(
+                mass_kg, emitter_radius, args.emitted_hz
+            ),
+            "received_power_fraction": link_fraction,
+            "received_signal_power_w": received_power,
+            "thermal_noise_power_w": thermal_noise_power(
+                args.system_temperature_k, args.bandwidth_hz
+            ),
+            "instantaneous_power_snr": instantaneous_snr,
+            "integrated_radiometer_snr": integrated_snr,
+            "shannon_capacity_bits_per_second": capacity_from_snr(
+                instantaneous_snr, args.bandwidth_hz
+            ),
         }
     else:
         mass_kg = args.mass_solar * M_SUN
