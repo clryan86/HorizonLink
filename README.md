@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/clryan86/HorizonLink/actions/workflows/ci.yml/badge.svg)](https://github.com/clryan86/HorizonLink/actions/workflows/ci.yml)
 
-**HorizonLink** is an open-source Python research sandbox for turning questions about horizons, noisy channels, and information recovery into reproducible numerical experiments.
+**HorizonLink** is an open-source Python research sandbox for turning questions about horizons, noisy channels, quantum-information analogues, and information recovery into reproducible numerical experiments.
 
 The project deliberately separates established equations from simplified analogues and speculative toy models. It does **not** claim faster-than-light communication, communication from inside a classical black-hole event horizon, or a violation of quantum no-signaling constraints.
 
@@ -21,11 +21,13 @@ The goal is not to force an exotic result. The goal is to find out exactly where
 - AWGN Shannon-Hartley capacity calculations
 - Information-theory metrics
 - Hayden–Preskill-inspired recovery toy model
+- Three-qubit quantum teleportation simulator implemented directly with NumPy
+- Noisy Bell-resource / teleportation fidelity experiments
 - Cartesian parameter search
 - Reproducible Monte Carlo experiments
 - JSON-producing command-line interface
-- CSV horizon-profile experiment
-- Optional matplotlib profile plots
+- CSV horizon-profile and teleportation-sweep experiments
+- Optional matplotlib plots
 - Pytest test suite
 - Ruff linting and GitHub Actions CI on Python 3.10, 3.11, and 3.12
 
@@ -85,6 +87,14 @@ horizonlink link-budget 10 2.0 1000000000 1000000000 --aperture-area-m2 100
 
 Here `2.0` means the transmitter is at two Schwarzschild radii. The model rejects an emitter at or inside the event horizon.
 
+### Quantum teleportation toy model
+
+```bash
+horizonlink teleport 1.57079632679 --phi 0.5 --resource-error 0.1
+```
+
+This runs a standard three-qubit teleportation circuit with optional Pauli noise on Bob's half of the shared Bell pair and reports output fidelity plus Bob's reduced-state observables.
+
 ## Reproducible experiments
 
 Generate a radius/redshift/link profile as CSV:
@@ -96,6 +106,12 @@ python experiments/run_horizon_profile.py \
   --receiver-distance-m 1e9 \
   --aperture-area-m2 100 \
   --output horizon_profile.csv
+```
+
+Sweep Bell-resource noise versus teleportation fidelity:
+
+```bash
+python experiments/run_teleportation_sweep.py
 ```
 
 The original channel-search experiment is also available:
@@ -111,7 +127,8 @@ horizonlink/
   channels/       Classical noisy-channel baselines
   horizons/       Relativistic exterior-horizon calculations
   metrics/        Information-theory metrics
-  protocols/      Recovery/protocol toy models
+  protocols/      Recovery and teleportation protocol models
+  quantum/        Small auditable quantum-state utilities
   search/         Parameter search helpers
   simulation/     Reproducible Monte Carlo experiments
   cli.py          Command-line interface
@@ -126,7 +143,9 @@ docs/              Model assumptions and roadmap
 
 The Schwarzschild helpers use an idealized, non-rotating, uncharged black hole. A static emitter arbitrarily close to the horizon is itself an idealization because the required proper acceleration diverges at the horizon.
 
-The channel models are abstractions. A high simulated recovery score means a toy model preserved information under its assumptions; it does **not** demonstrate that a real black hole can transmit a chosen message from behind its event horizon.
+The channel and quantum models are abstractions. A high simulated recovery or teleportation fidelity means the stated toy model preserved information under its assumptions; it does **not** demonstrate that a real black hole can transmit a chosen message from behind its event horizon.
+
+The teleportation simulator is standard quantum information: Alice's measurement outcomes still require ordinary classical communication. Entanglement alone does not provide faster-than-light signaling.
 
 See [`docs/MODELS.md`](docs/MODELS.md) for model boundaries and [`docs/ROADMAP.md`](docs/ROADMAP.md) for planned extensions.
 
