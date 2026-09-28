@@ -24,6 +24,29 @@ def test_link_budget_command(capsys):
     assert 0.0 < payload["received_power_fraction"] < 1.0
 
 
+def test_link_design_command(capsys):
+    argv = [
+        "link-design",
+        "10",
+        "2",
+        "1000000000",
+        "100000000",
+        "50",
+        "1000000",
+        "10",
+        "--aperture-area-m2",
+        "100",
+        "--target-snr",
+        "5",
+    ]
+    assert main(argv) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["target_integrated_snr"] == 5.0
+    assert payload["required_transmitter_power_w"] > 0.0
+    assert payload["maximum_receiver_distance_m"] > 0.0
+    assert payload["current_integrated_snr"] > 0.0
+
+
 def test_cli_rejects_nan_before_calculation(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["radius", "nan"])
