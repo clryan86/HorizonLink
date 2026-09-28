@@ -98,6 +98,7 @@ def _parser() -> argparse.ArgumentParser:
     mc.add_argument("--trials", type=int, default=100)
     mc.add_argument("--bits", type=int, default=10_000)
     mc.add_argument("--seed", type=int, default=0)
+    mc.add_argument("--confidence", type=_finite_float, default=0.95)
 
     ecc = sub.add_parser(
         "ecc-benchmark",
@@ -107,6 +108,7 @@ def _parser() -> argparse.ArgumentParser:
     ecc.add_argument("--trials", type=int, default=100)
     ecc.add_argument("--bits", type=int, default=12_000)
     ecc.add_argument("--seed", type=int, default=0)
+    ecc.add_argument("--confidence", type=_finite_float, default=0.95)
 
     link = sub.add_parser("link-budget", help="Estimate a toy exterior-horizon link fraction")
     link.add_argument("mass_solar", type=_finite_float)
@@ -249,6 +251,7 @@ def _calculate(args: argparse.Namespace) -> dict[str, object]:
             trials=args.trials,
             bits_per_trial=args.bits,
             seed=args.seed,
+            confidence=args.confidence,
         ).as_dict()
 
     if args.command == "ecc-benchmark":
@@ -257,6 +260,7 @@ def _calculate(args: argparse.Namespace) -> dict[str, object]:
             trials=args.trials,
             bits_per_trial=args.bits,
             seed=args.seed,
+            confidence=args.confidence,
         ).as_dict()
 
     if args.command == "teleport":
