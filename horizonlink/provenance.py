@@ -46,12 +46,12 @@ def experiment_metadata(
     seed: int | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-serializable provenance record for one experiment."""
-    if not experiment.strip():
+    if not isinstance(experiment, str) or not experiment.strip():
         raise ValueError("experiment name cannot be empty")
     if model_level not in {"established", "analogue", "speculative-toy"}:
         raise ValueError("model_level must be established, analogue, or speculative-toy")
 
-    return {
+    metadata = {
         "schema_version": 1,
         "experiment": experiment,
         "model_level": model_level,
@@ -67,6 +67,8 @@ def experiment_metadata(
             "git_commit": current_git_commit(),
         },
     }
+    json.dumps(metadata, allow_nan=False)
+    return metadata
 
 
 def metadata_sidecar_path(data_path: Path) -> Path:
@@ -108,15 +110,21 @@ def write_csv_with_metadata(
 ) -> tuple[Path, Path]:
     """Atomically write CSV data plus a JSON provenance sidecar.
 
-    Rows are materialized before any destination is replaced so errors in row
-    generation/serialization cannot truncate an existing experiment result.
+    Rows and metadata are fully materialized and strict-JSON validated before
+    either destination is replaced, preventing failed calculations or NaN/Inf
+    values from truncating a previously valid result.
     """
     path = Path(path)
+    fieldnames = list(fieldnames)
+    if not fieldnames or any(not isinstance(name, str) or not name for name in fieldnames):
+        raise ValueError("fieldnames must contain at least one nonempty string")
+
     materialized_rows = [dict(row) for row in rows]
+    json.dumps(materialized_rows, allow_nan=False)
     json.dumps(metadata, allow_nan=False)
 
     def write_csv(handle) -> None:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="raise")
         writer.writeheader()
         writer.writerows(materialized_rows)
 
