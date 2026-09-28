@@ -1,7 +1,11 @@
 import pytest
 
 from horizonlink.detectors.radiometer import integrated_radiometer_snr
-from horizonlink.horizons.design import maximum_receiver_distance, required_transmitter_power
+from horizonlink.horizons.design import (
+    maximum_receiver_distance,
+    required_collecting_area,
+    required_transmitter_power,
+)
 from horizonlink.horizons.link_budget import horizon_link_fraction
 from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
 
@@ -70,6 +74,38 @@ def test_maximum_receiver_distance_hits_target_snr():
     assert snr == pytest.approx(target, rel=1e-12)
 
 
+def test_required_collecting_area_hits_target_snr():
+    mass = 7.0 * M_SUN
+    radius = 2.5 * schwarzschild_radius(mass)
+    transmitter_power = 1.0e7
+    distance = 5.0e9
+    temperature = 40.0
+    bandwidth = 4.0e5
+    integration = 30.0
+    target = 6.0
+
+    aperture = required_collecting_area(
+        mass,
+        radius,
+        transmitter_power,
+        distance,
+        temperature,
+        bandwidth,
+        integration,
+        target,
+    )
+    received_power = transmitter_power * horizon_link_fraction(
+        mass, radius, distance, aperture
+    )
+    recovered = integrated_radiometer_snr(
+        received_power,
+        temperature,
+        bandwidth,
+        integration,
+    )
+    assert recovered == pytest.approx(target, rel=1e-12)
+
+
 def test_longer_integration_reduces_required_transmitter_power():
     mass = M_SUN
     radius = 2.0 * schwarzschild_radius(mass)
@@ -91,6 +127,22 @@ def test_max_distance_rejects_impossible_target():
             radius,
             transmitter_power_w=1.0e-30,
             aperture_area_m2=1.0,
+            system_temperature_k=300.0,
+            bandwidth_hz=1.0e9,
+            integration_time_s=1.0,
+            target_snr=100.0,
+        )
+
+
+def test_required_collecting_area_rejects_impossible_target():
+    mass = M_SUN
+    radius = 1.0001 * schwarzschild_radius(mass)
+    with pytest.raises(ValueError, match="cannot be reached"):
+        required_collecting_area(
+            mass,
+            radius,
+            transmitter_power_w=1.0e-30,
+            receiver_distance_m=1.0e6,
             system_temperature_k=300.0,
             bandwidth_hz=1.0e9,
             integration_time_s=1.0,
