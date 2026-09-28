@@ -49,6 +49,40 @@ def test_link_design_command(capsys):
     assert payload["current_integrated_snr"] > 0.0
 
 
+def test_scenario_replay_command(tmp_path, capsys):
+    scenario = {
+        "schema_version": 1,
+        "horizonlink_version": "0.4.0",
+        "workspace": "quantum-information",
+        "model_level": "analogue",
+        "theta_rad": 1.17,
+        "phi_rad": 0.73,
+        "resource_error_probability": 0.75,
+        "classical_bit_error_probability": 0.0,
+        "teleportation_fidelity": 0.5,
+        "bob_probability_0": 0.5,
+        "bob_probability_1": 0.5,
+    }
+    path = tmp_path / "scenario.json"
+    path.write_text(json.dumps(scenario), encoding="utf-8")
+
+    assert main(["scenario-replay", str(path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["workspace"] == "quantum-information"
+    assert payload["recomputed"]["teleportation_fidelity"] == pytest.approx(0.5)
+    assert payload["comparison"]
+
+
+def test_scenario_replay_missing_file_is_clean_cli_error(tmp_path, capsys):
+    path = tmp_path / "missing.json"
+    with pytest.raises(SystemExit) as exc:
+        main(["scenario-replay", str(path)])
+    assert exc.value.code == 2
+    captured = capsys.readouterr()
+    assert "No such file" in captured.err
+    assert "Traceback" not in captured.err
+
+
 def test_cli_rejects_nan_before_calculation(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["radius", "nan"])
