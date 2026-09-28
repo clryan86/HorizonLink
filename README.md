@@ -24,9 +24,10 @@ horizonlink dashboard
 
 Streamlit will open **HorizonLink Lab** in your browser. The current workspaces are:
 
-- **Exterior Link** — redshift, geometric collection, received signal power, thermal noise, SNR, integration gain, Shannon capacity, required transmitter power, and maximum receiver distance
+- **Exterior Link** — redshift, geometric collection, received signal power, thermal noise, SNR, integration gain, Shannon capacity, and four inverse-design quantities
 - **Kerr Rotation** — outer/inner horizons, static limit, horizon rotation, and frame-dragging profiles
 - **Quantum Information** — noisy three-qubit teleportation with live fidelity sweeps
+- **Scenario Replay** — upload a previously exported scenario, recompute it with the current code, and inspect numerical drift
 
 See [`docs/DASHBOARD.md`](docs/DASHBOARD.md) for a guided walkthrough.
 
@@ -43,7 +44,7 @@ The goal is not to force an exotic result. The goal is to find out exactly where
 - Exterior-horizon toy link budget using redshift plus geometric collection
 - Idealized thermal detector model using `kTB` noise and radiometer integration scaling
 - End-to-end link detectability calculation from transmitter power to SNR and Shannon capacity
-- Inverse link design for required transmitter power and maximum receiver distance at a target SNR
+- Inverse link design for required transmitter power, required collecting area, required integration time, and maximum receiver distance at a target SNR
 - Binary erasure channel simulation
 - Binary symmetric channel capacity and simulation over the full `0 <= p <= 1` domain
 - AWGN Shannon-Hartley capacity calculations
@@ -55,6 +56,7 @@ The goal is not to force an exotic result. The goal is to find out exactly where
 - Cartesian parameter search with non-finite objective rejection
 - Reproducible Monte Carlo experiments
 - Strict JSON-producing command-line interface
+- Versioned dashboard scenario exports and deterministic scenario replay/regression checks
 - CSV horizon, Kerr, detectability, and teleportation experiments
 - Experiment provenance metadata with package/Python/NumPy versions and Git commit when available
 - Atomic experiment output writes that protect existing results from failed runs
@@ -136,7 +138,15 @@ horizonlink link-design 10 2.0 1e9 1e8 50 1e6 10 \
   --target-snr 5
 ```
 
-This asks two inverse questions under the same simplified model: how much transmitter power is required to reach the target integrated SNR at the requested distance, and how far the supplied transmitter power can reach at that target SNR. It also reports the SNR of the supplied scenario.
+This evaluates the supplied scenario and answers four inverse questions under the same simplified model: required transmitter power, required collecting area, required integration time, and maximum receiver distance for the requested target integrated SNR.
+
+### Replay a saved dashboard scenario
+
+```bash
+horizonlink scenario-replay path/to/horizonlink_exterior_scenario.json
+```
+
+Replay validates the scenario envelope, recomputes the result from the saved inputs using the current HorizonLink implementation, and reports field-by-field differences for overlapping saved numerical outputs. This is useful for detecting intentional model changes or regressions across versions.
 
 ### Binary symmetric channel capacity
 
@@ -226,6 +236,7 @@ horizonlink/
   cli.py          Command-line interface
   dashboard.py    Interactive HorizonLink Lab
   provenance.py   Reproducible output metadata and atomic writes
+  scenarios.py    Versioned scenario validation and deterministic replay
   visualization.py
 experiments/       Runnable research scripts
 tests/             Automated tests
@@ -244,6 +255,8 @@ The detector layer starts with the Rayleigh-Jeans thermal-noise approximation `P
 The channel and quantum models are abstractions. A high simulated recovery or teleportation fidelity means the stated toy model preserved information under its assumptions; it does **not** demonstrate that a real black hole can transmit a chosen message from behind its event horizon.
 
 The teleportation simulator is standard quantum information: Alice's measurement outcomes still require ordinary classical communication. Entanglement alone does not provide faster-than-light signaling.
+
+Scenario replay is a software/reproducibility tool. Numerical drift between versions is evidence that the implementation or assumptions changed; it is not by itself evidence of new physics.
 
 See [`docs/MODELS.md`](docs/MODELS.md) for model boundaries and [`docs/ROADMAP.md`](docs/ROADMAP.md) for planned extensions.
 
