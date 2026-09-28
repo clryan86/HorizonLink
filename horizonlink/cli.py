@@ -53,6 +53,12 @@ def _parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Pauli error probability on Bob's half of the Bell pair",
     )
+    tp.add_argument(
+        "--classical-bit-error",
+        type=float,
+        default=0.0,
+        help="Independent flip probability for each of Alice's two classical correction bits",
+    )
 
     return parser
 
@@ -87,11 +93,16 @@ def main(argv: list[str] | None = None) -> int:
         ).as_dict()
     elif args.command == "teleport":
         state = qubit_state(args.theta, args.phi)
-        output = teleport(state, resource_error_probability=args.resource_error)
+        output = teleport(
+            state,
+            resource_error_probability=args.resource_error,
+            classical_bit_error_probability=args.classical_bit_error,
+        )
         payload = {
             "theta": args.theta,
             "phi": args.phi,
             "resource_error_probability": args.resource_error,
+            "classical_bit_error_probability": args.classical_bit_error,
             "fidelity": fidelity_pure(state, output),
             "bob_probability_0": float(output[0, 0].real),
             "bob_probability_1": float(output[1, 1].real),
