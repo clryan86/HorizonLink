@@ -12,6 +12,21 @@ HorizonLink is a research sandbox, not evidence that information can be sent out
 
 The helpers reject radii at or below the event horizon. The static-emitter idealization also becomes physically extreme as `r -> r_s`; an observer cannot remain static at the horizon with finite proper acceleration.
 
+## Kerr rotating-horizon model
+
+`horizonlink.horizons.kerr` adds standard idealized Kerr geometry for an uncharged rotating black hole. It uses the dimensionless spin parameter
+
+`chi = cJ/(GM^2)`, with `|chi| <= 1`.
+
+Current helpers calculate:
+
+- gravitational radius `r_g = GM/c^2`;
+- outer and inner Boyer-Lindquist horizon radii `r_+` and `r_-`;
+- outer static-limit radius as a function of polar angle;
+- horizon angular velocity.
+
+The region between the outer horizon and outer static limit is the ergoregion. These helpers describe geometry only. They do not yet integrate photon geodesics, calculate lensing, model locally non-rotating observers, or provide a full Kerr radiative-transfer calculation.
+
 ## Exterior link budget
 
 `horizonlink.horizons.link_budget` multiplies two deliberately separable effects:
@@ -24,6 +39,20 @@ The collecting-area form is intentional. It avoids hiding wavelength-dependent a
 ## Classical channel baselines
 
 The erasure, binary-symmetric, and additive-white-Gaussian-noise helpers are information-theory reference channels. They let experiments compare a speculative mapping against well-understood capacities and error rates.
+
+## Quantum-information models
+
+`horizonlink.quantum` and `horizonlink.protocols.teleportation` implement small, auditable NumPy models for standard quantum-information concepts:
+
+- pure qubit and Bell states;
+- density matrices and pure-state fidelity;
+- Pauli depolarizing noise;
+- a standard three-qubit teleportation protocol;
+- noisy Bell-resource experiments;
+- noisy two-bit classical correction channels;
+- purity, von Neumann entropy, partial trace, and a standard CHSH diagnostic.
+
+Teleportation does not permit faster-than-light communication. Alice's two classical measurement bits are still required before Bob can select the correct Pauli operation. HorizonLink models those classical bits explicitly so that a quantum-resource advantage cannot silently bypass an ordinary communication constraint.
 
 ## Hayden–Preskill-inspired recovery
 
