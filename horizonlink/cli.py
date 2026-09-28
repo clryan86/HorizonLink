@@ -9,6 +9,8 @@ from horizonlink.channels.binary_symmetric import capacity_bits_per_use
 from horizonlink.channels.gaussian import capacity_from_snr, snr_db_to_linear
 from horizonlink.horizons.link_budget import horizon_link_fraction, redshifted_frequency
 from horizonlink.horizons.schwarzschild import M_SUN, schwarzschild_radius
+from horizonlink.protocols.teleportation import teleport
+from horizonlink.quantum.states import fidelity_pure, qubit_state
 from horizonlink.simulation.monte_carlo import run_bsc_trials
 
 
@@ -42,6 +44,16 @@ def _parser() -> argparse.ArgumentParser:
     link.add_argument("emitted_hz", type=float)
     link.add_argument("--aperture-area-m2", type=float, default=1.0)
 
+    tp = sub.add_parser("teleport", help="Run the three-qubit teleportation toy model")
+    tp.add_argument("theta", type=float, help="Input-state Bloch polar angle in radians")
+    tp.add_argument("--phi", type=float, default=0.0, help="Bloch azimuth angle in radians")
+    tp.add_argument(
+        "--resource-error",
+        type=float,
+        default=0.0,
+        help="Pauli error probability on Bob's half of the Bell pair",
+    )
+
     return parser
 
 
@@ -73,6 +85,18 @@ def main(argv: list[str] | None = None) -> int:
             bits_per_trial=args.bits,
             seed=args.seed,
         ).as_dict()
+    elif args.command == "teleport":
+        state = qubit_state(args.theta, args.phi)
+        output = teleport(state, resource_error_probability=args.resource_error)
+        payload = {
+            "theta": args.theta,
+            "phi": args.phi,
+            "resource_error_probability": args.resource_error,
+            "fidelity": fidelity_pure(state, output),
+            "bob_probability_0": float(output[0, 0].real),
+            "bob_probability_1": float(output[1, 1].real),
+            "bob_coherence_magnitude": float(abs(output[0, 1])),
+        }
     else:
         mass_kg = args.mass_solar * M_SUN
         rs = schwarzschild_radius(mass_kg)
