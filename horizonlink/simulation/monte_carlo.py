@@ -21,10 +21,15 @@ class MonteCarloResult:
     confidence: float
     confidence_interval_low: float | None
     confidence_interval_high: float | None
+    confidence_interval_half_width: float | None
     relative_standard_error: float | None
+    relative_confidence_interval_half_width: float | None
+    relative_tolerance: float
+    absolute_tolerance: float
+    converged: bool | None
     seed: int
 
-    def as_dict(self) -> dict[str, int | float | None]:
+    def as_dict(self) -> dict[str, int | float | bool | None]:
         return {
             "trials": self.trials,
             "bits_per_trial": self.bits_per_trial,
@@ -35,7 +40,12 @@ class MonteCarloResult:
             "confidence": self.confidence,
             "confidence_interval_low": self.confidence_interval_low,
             "confidence_interval_high": self.confidence_interval_high,
+            "confidence_interval_half_width": self.confidence_interval_half_width,
             "relative_standard_error": self.relative_standard_error,
+            "relative_confidence_interval_half_width": self.relative_confidence_interval_half_width,
+            "relative_tolerance": self.relative_tolerance,
+            "absolute_tolerance": self.absolute_tolerance,
+            "converged": self.converged,
             "seed": self.seed,
         }
 
@@ -47,6 +57,8 @@ def run_bsc_trials(
     bits_per_trial: int = 10_000,
     seed: int = 0,
     confidence: float = 0.95,
+    relative_tolerance: float = 0.05,
+    absolute_tolerance: float = 1e-4,
 ) -> MonteCarloResult:
     """Estimate BSC BER with reproducible trial-level convergence diagnostics."""
     flip_probability = float(flip_probability)
@@ -64,7 +76,12 @@ def run_bsc_trials(
         received = bsc_transmit(bits, flip_probability, seed=trial_seed)
         error_rates[index] = np.mean(received != bits)
 
-    summary = summarize_samples(error_rates, confidence=confidence)
+    summary = summarize_samples(
+        error_rates,
+        confidence=confidence,
+        relative_tolerance=relative_tolerance,
+        absolute_tolerance=absolute_tolerance,
+    )
     return MonteCarloResult(
         trials=trials,
         bits_per_trial=bits_per_trial,
@@ -75,6 +92,13 @@ def run_bsc_trials(
         confidence=float(summary["confidence"]),
         confidence_interval_low=summary["confidence_interval_low"],
         confidence_interval_high=summary["confidence_interval_high"],
+        confidence_interval_half_width=summary["confidence_interval_half_width"],
         relative_standard_error=summary["relative_standard_error"],
+        relative_confidence_interval_half_width=summary[
+            "relative_confidence_interval_half_width"
+        ],
+        relative_tolerance=float(summary["relative_tolerance"]),
+        absolute_tolerance=float(summary["absolute_tolerance"]),
+        converged=summary["converged"],
         seed=seed,
     )
